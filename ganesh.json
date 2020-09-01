@@ -8,6 +8,6 @@
     "workers": 11
   },
   "trainer": {
-    "checkpoint_path": "/home/user/ganesh/models/vision-classification/pl-trainer.checkpoint"
+    "checkpoint": "/home/user/ganesh/models/vision-classification/pl-trainer.ckpt"
   }
 }
