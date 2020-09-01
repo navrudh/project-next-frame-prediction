@@ -14,7 +14,8 @@ class LatentBlock(nn.Module):
     ):
         super().__init__()
         self.batch_size = batch_size
-        self.lstm_dims = [128, 128, 64]
+        # self.lstm_dims = [128, 128, 64]
+        self.lstm_dims = [64]
         if location_aware:
             self.conv1x1 = LocationAwareConv2d(
                 in_channels=hidden_dim,
@@ -32,18 +33,21 @@ class LatentBlock(nn.Module):
             input_size=(input_dim, input_dim),
             input_dim=hidden_dim,
             hidden_dim=self.lstm_dims,
+            num_layers=len(self.lstm_dims),
             kernel_size=(3, 3),
         )
         self.convgru2 = ConvGRU(
             input_size=(input_dim, input_dim),
             input_dim=hidden_dim,
             hidden_dim=self.lstm_dims,
+            num_layers=len(self.lstm_dims),
             kernel_size=(5, 5),
         )
         self.convgru3 = ConvGRU(
             input_size=(input_dim, input_dim),
             input_dim=hidden_dim,
             hidden_dim=self.lstm_dims,
+            num_layers=len(self.lstm_dims),
             kernel_size=(7, 7),
         )
 

@@ -2,12 +2,12 @@ import getpass
 import json
 from typing import List
 
+import pytorch_lightning.metrics.functional as PL_F
 import torch
+import torch.nn.functional as F
 from pytorch_lightning import LightningModule, Trainer, seed_everything
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.metrics import SSIM
 from torch import nn, device as torch_device, cuda as torch_cuda
-from torch.nn import L1Loss, MSELoss
 from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
 
@@ -53,6 +53,8 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         self.l2_loss_wt = l2_loss_wt
         self.ssim_loss_wt = ssim_loss_wt
 
+        self.save_hyperparameters()
+
         self.data_transforms = {
             "video": transforms.Compose(
                 [
@@ -64,7 +66,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
                     transforms.Lambda(
                         lambda x: nn.functional.interpolate(x, (224, 224))
                     ),
-                    transforms.Lambda(lambda x: x.half()),
+                    # transforms.Lambda(lambda x: x.half()),
                 ]
             )
         }
@@ -75,16 +77,22 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             batch_size=batch_size,
         )
 
-        self.ssim_loss = SSIM(data_range=1.0)
-        self.l1_loss = L1Loss()
-        self.l2_loss = MSELoss()
+    def criterion(self, t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
+        ssim_loss = 1.0 - PL_F.ssim(t1, t2, data_range=1.)
+        l1_loss = F.l1_loss(t1, t2)
+        l2_loss = F.mse_loss(t1, t2)
 
-    def loss(self, t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
-        ssim_loss = 1.0 - self.ssim_loss(t1, t2)
+        if torch.isnan(ssim_loss).any():
+            print("SSIM Nan", ssim_loss)
+        if torch.isnan(l1_loss).any():
+            print("L1 Nan", l1_loss)
+        if torch.isnan(l2_loss).any():
+            print("L2 Nan", l2_loss)
+
         return (
                 self.ssim_loss_wt * ssim_loss
-                + self.l1_loss_wt * self.l1_loss(t1, t2)
-                + self.l2_loss_wt * self.l2_loss(t1, t2)
+                + self.l1_loss_wt * l1_loss
+                + self.l2_loss_wt * l2_loss
         )
 
     def forward(self, x):
@@ -118,12 +126,20 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
     def training_step(self, batch, batch_nb):
         x, y = batch
         curr = x[:, :8, :, :, :]
-        curr = curr.view(-1, 3, 224, 224)
+        curr = F.pad(curr, [0] * 7 + [8 - curr.shape[1]], "constant", 0)
+        curr = curr.reshape(-1, 3, 224, 224).contiguous()
         pred = self(curr)
         next = x[:, 1:, :, :, :]
-        next = next.view(-1, 3, 224, 224)
-        next = nn.functional.interpolate(next, size=(112, 112))
-        loss = self.loss(pred, next)
+        next = F.pad(next, [0] * 7 + [8 - next.shape[1]], "constant", 0)
+        next = next.reshape(-1, 3, 224, 224).contiguous()
+        next = F.interpolate(next, size=(112, 112))
+        loss = self.criterion(pred, next)
+        if torch.isnan(loss).any():
+            print("Got NAN Loss!")
+            print(x.shape)
+            print(y)
+            print(curr.shape)
+            print(next.shape)
         tensorboard_logs = {"train_loss": loss.item()}
         return {"loss": loss, "log": tensorboard_logs}
 
@@ -131,19 +147,23 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 def train_model(
         lit_model: LightningModule,
         tensorboard_graph_name: str = None,
-        max_epochs: int = 10,
+        max_epochs: int = 1,
 ):
     logger = False
     if tensorboard_graph_name:
         logger = TensorBoardLogger("lightning_logs", name=tensorboard_graph_name)
+    # profiler = AdvancedProfiler()
     trainer = Trainer(
-        precision=16,
+        # precision=16, # 2x speedup but NAN loss after 500 steps
+        # profiler=profiler,
         checkpoint_callback=False,
         logger=logger,
         gpus=1,
         num_nodes=1,
         deterministic=True,
         max_epochs=max_epochs,
+        limit_train_batches=0.01,
+        # max_steps=100,
         # progress_bar_refresh_rate=0,
         # progress_bar_callback=False,
     )
@@ -155,7 +175,7 @@ IMG_DIM = 224
 block_inp_dims = [IMG_DIM // v for v in (2, 4, 8, 16)]
 
 lit_model = SelfSupervisedVideoPredictionLitModel(
-    hidden_dims=[64, 64, 128, 256], latent_block_dims=block_inp_dims
+    hidden_dims=[64, 64, 128, 256], latent_block_dims=block_inp_dims, batch_size=4
 )
 
 train_model(lit_model)

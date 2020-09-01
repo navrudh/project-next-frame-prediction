@@ -1,10 +1,13 @@
 {
   "dataloader": {
-    "workers": 8
+    "workers": 7
   },
   "ucf101": {
     "root": "/home/user/ganesh/datasets/UCF101/UCF-101",
     "anno": "/home/user/ganesh/datasets/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
-    "workers": 12
+    "workers": 11
+  },
+  "trainer": {
+    "checkpoint_path": "/home/user/ganesh/models/vision-classification/pl-trainer.checkpoint"
   }
 }

@@ -16,7 +16,7 @@ class ConvGRUCell(nn.Module):
         hidden_dim,
         kernel_size,
         bias=True,
-        activation=torch.tanh,
+        activation=torch.tanh_,
         batchnorm=False,
     ):
         """
@@ -75,7 +75,7 @@ class ConvGRUCell(nn.Module):
     def forward(self, input, h_prev):
         combined = torch.cat((input, h_prev), dim=1)  # concatenate along channel axis
 
-        combined_conv = torch.sigmoid(self.conv_zr(combined))
+        combined_conv = torch.sigmoid_(self.conv_zr(combined))
 
         z, r = torch.split(combined_conv, self.hidden_dim, dim=1)
 
@@ -121,7 +121,7 @@ class ConvGRU(nn.Module):
         num_layers=3,
         batch_first=True,
         bias=True,
-        activation=torch.tanh,
+        activation=torch.tanh_,
         batchnorm=False,
     ):
         super(ConvGRU, self).__init__()

@@ -1,10 +1,10 @@
 {
   "dataloader": {
-    "workers": 8
+    "workers": 7
   },
   "ucf101": {
     "root": "/media/navrudh/Data/ML/dataset/UCF101/UCF-101",
     "anno": "/media/navrudh/Data/ML/dataset/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
-    "workers": 8
+    "workers": 7
   }
 }
