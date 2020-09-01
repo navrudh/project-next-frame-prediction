@@ -39,13 +39,13 @@ def custom_collate(batch):
 # HHHHHHHHHHH
 class SelfSupervisedVideoPredictionLitModel(LightningModule):
     def __init__(
-            self,
-            hidden_dims: List[int],
-            latent_block_dims: List[int],
-            batch_size: int = 1,
-            l1_loss_wt: int = 0.16,
-            l2_loss_wt: int = 0.0005,
-            ssim_loss_wt: int = 0.84,
+        self,
+        hidden_dims: List[int],
+        latent_block_dims: List[int],
+        batch_size: int = 1,
+        l1_loss_wt: int = 0.3,
+        l2_loss_wt: int = 0.05,
+        ssim_loss_wt: int = 0.65,
     ):
         super().__init__()
         self.batch_size = batch_size
@@ -78,21 +78,14 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         )
 
     def criterion(self, t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
-        ssim_loss = 1.0 - PL_F.ssim(t1, t2, data_range=1.)
+        ssim_loss = 1.0 - PL_F.ssim(t1, t2, data_range=1.0)
         l1_loss = F.l1_loss(t1, t2)
         l2_loss = F.mse_loss(t1, t2)
 
-        if torch.isnan(ssim_loss).any():
-            print("SSIM Nan", ssim_loss)
-        if torch.isnan(l1_loss).any():
-            print("L1 Nan", l1_loss)
-        if torch.isnan(l2_loss).any():
-            print("L2 Nan", l2_loss)
-
         return (
-                self.ssim_loss_wt * ssim_loss
-                + self.l1_loss_wt * l1_loss
-                + self.l2_loss_wt * l2_loss
+            self.ssim_loss_wt * ssim_loss
+            + self.l1_loss_wt * l1_loss
+            + self.l2_loss_wt * l2_loss
         )
 
     def forward(self, x):
@@ -100,7 +93,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         return x
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.001, weight_decay=1e-5)
+        optimizer = torch.optim.Adam(
+            self.model.parameters(), lr=0.0005, weight_decay=1e-5
+        )
         return optimizer
 
     def train_dataloader(self) -> DataLoader:
@@ -108,7 +103,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         train_dataset = datasets.UCF101(
             config["ucf101"]["root"],
             config["ucf101"]["anno"],
-            frames_per_clip=9,
+            frames_per_clip=6,
             step_between_clips=8,
             num_workers=config["ucf101"]["workers"],
             train=True,
@@ -125,29 +120,21 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def training_step(self, batch, batch_nb):
         x, y = batch
-        curr = x[:, :8, :, :, :]
-        curr = F.pad(curr, [0] * 7 + [8 - curr.shape[1]], "constant", 0)
+        curr = x[:, :5, :, :, :]
+        # curr = F.pad(curr, [0] * 7 + [5 - curr.shape[1]], "constant", 0)
         curr = curr.reshape(-1, 3, 224, 224).contiguous()
         pred = self(curr)
-        next = x[:, 1:, :, :, :]
-        next = F.pad(next, [0] * 7 + [8 - next.shape[1]], "constant", 0)
+        next = x[:, -3:, :, :, :]
+        # next = F.pad(next, [0] * 7 + [5 - next.shape[1]], "constant", 0)
         next = next.reshape(-1, 3, 224, 224).contiguous()
         next = F.interpolate(next, size=(112, 112))
         loss = self.criterion(pred, next)
-        if torch.isnan(loss).any():
-            print("Got NAN Loss!")
-            print(x.shape)
-            print(y)
-            print(curr.shape)
-            print(next.shape)
         tensorboard_logs = {"train_loss": loss.item()}
         return {"loss": loss, "log": tensorboard_logs}
 
 
 def train_model(
-        lit_model: LightningModule,
-        tensorboard_graph_name: str = None,
-        max_epochs: int = 1,
+    lit_model: LightningModule, tensorboard_graph_name: str = None, max_epochs: int = 1,
 ):
     logger = False
     if tensorboard_graph_name:
@@ -160,9 +147,9 @@ def train_model(
         logger=logger,
         gpus=1,
         num_nodes=1,
-        deterministic=True,
+        # deterministic=True,
         max_epochs=max_epochs,
-        limit_train_batches=0.01,
+        limit_train_batches=0.1,
         # max_steps=100,
         # progress_bar_refresh_rate=0,
         # progress_bar_callback=False,
@@ -175,7 +162,7 @@ IMG_DIM = 224
 block_inp_dims = [IMG_DIM // v for v in (2, 4, 8, 16)]
 
 lit_model = SelfSupervisedVideoPredictionLitModel(
-    hidden_dims=[64, 64, 128, 256], latent_block_dims=block_inp_dims, batch_size=4
+    hidden_dims=[64, 64, 128, 256], latent_block_dims=block_inp_dims, batch_size=8
 )
 
 train_model(lit_model)

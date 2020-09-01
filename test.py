@@ -14,11 +14,16 @@ model = SelfSupervisedVideoPredictionModel(
 )
 model = model.cuda()
 
-inp = torch.randn((2, 8, 3, 224, 224)).to(device)
-inp = inp.view(-1, 3, 224, 224)
-x = model(inp)
-
+inp = torch.randn((2, 5, 3, 224, 224)).to(device)
+_inp = inp.view(-1, 3, 224, 224)
+x = model(_inp)
+print("TEST pred", x.shape)
 loss = SSIM(data_range=1.0)
-l = loss(nn.functional.interpolate(inp, size=(112, 112)), x)
+l = loss(
+    nn.functional.interpolate(
+        inp[:, -3:, :, :, :].reshape(-1, 3, 224, 224), size=(112, 112)
+    ),
+    x,
+)
 print(l)
 exit()

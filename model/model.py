@@ -46,6 +46,19 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         self.lateral_inputs = {}
         self._register_hooks()
 
+    def parameters(self, recurse: bool = True):
+        return (
+            list(self.latent_block_0.parameters())
+            + list(self.latent_block_1.parameters())
+            + list(self.latent_block_2.parameters())
+            + list(self.latent_block_3.parameters())
+            + list(self.decoder_block_1.parameters())
+            + list(self.decoder_block_2.parameters())
+            + list(self.decoder_block_3.parameters())
+            + list(self.decoder_block_4.parameters())
+            + list(self.decoder_block_5.parameters())
+        )
+
     def forward(self, x):
         self.encoder(x)
         lb0 = self.latent_block_0(self.lateral_inputs[self.enc2lateral_hook_layers[0]])
@@ -53,14 +66,37 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         lb2 = self.latent_block_2(self.lateral_inputs[self.enc2lateral_hook_layers[2]])
         lb3 = self.latent_block_3(self.lateral_inputs[self.enc2lateral_hook_layers[3]])
 
-        lb0 = tuple(it.view(-1, *it.shape[-3:]) for it in lb0)
-        lb1 = tuple(it.view(-1, *it.shape[-3:]) for it in lb1)
-        lb2 = tuple(it.view(-1, *it.shape[-3:]) for it in lb2)
-        lb3 = tuple(it.view(-1, *it.shape[-3:]) for it in lb3)
+        lb0 = tuple(
+            it.view(self.batch_size, -1, *it.shape[-3:])[:, -3:, :, :, :].reshape(
+                -1, *it.shape[-3:]
+            )
+            for it in lb0
+        )
+        lb1 = tuple(
+            it.view(self.batch_size, -1, *it.shape[-3:])[:, -3:, :, :, :].reshape(
+                -1, *it.shape[-3:]
+            )
+            for it in lb1
+        )
+        lb2 = tuple(
+            it.view(self.batch_size, -1, *it.shape[-3:])[:, -3:, :, :, :].reshape(
+                -1, *it.shape[-3:]
+            )
+            for it in lb2
+        )
+        lb3 = tuple(
+            it.view(self.batch_size, -1, *it.shape[-3:])[:, -3:, :, :, :].reshape(
+                -1, *it.shape[-3:]
+            )
+            for it in lb3
+        )
 
         x = self.lateral_inputs[self.enc2lateral_hook_layers[4]]
         # print("DEC-BLK-1", x.shape)
         x = self.decoder_block_1(x)
+        x = x.view(self.batch_size, -1, *x.shape[-3:])[:, -3:, :, :, :].reshape(
+            -1, *x.shape[-3:]
+        )
         # print("DEC-BLK-2: CAT ", x.shape, [it.shape for it in lb3])
         x = torch.cat(lb3 + (x,), dim=1)
         x = self.decoder_block_2(x)
@@ -85,6 +121,6 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
 
     def get_module_output(self, name):
         def hook(model, input, output):
-            self.lateral_inputs[name] = output.detach()
+            self.lateral_inputs[name] = output.detach_()
 
         return hook

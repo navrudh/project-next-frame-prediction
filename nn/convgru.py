@@ -5,7 +5,10 @@ This file was taken from the repository https://github.com/aserdega/convlstmgru
 """
 
 import torch
-import torch.nn as nn
+
+from torch import nn, device as torch_device, cuda as torch_cuda
+
+device = torch_device("cuda:0" if torch_cuda.is_available() else "cpu")
 
 
 class ConvGRUCell(nn.Module):
@@ -85,10 +88,10 @@ class ConvGRUCell(nn.Module):
 
         return h_cur
 
-    def init_hidden(self, batch_size, cuda=True):
-        state = torch.zeros(batch_size, self.hidden_dim, self.height, self.width)
-        if cuda:
-            state = state.cuda()
+    def init_hidden(self, batch_size):
+        state = torch.zeros(
+            batch_size, self.hidden_dim, self.height, self.width, device=device
+        )
         return state
 
     def reset_parameters(self):
@@ -205,10 +208,10 @@ class ConvGRU(nn.Module):
         for c in self.cell_list:
             c.reset_parameters()
 
-    def get_init_states(self, batch_size, cuda=True):
+    def get_init_states(self, batch_size):
         init_states = []
         for i in range(self.num_layers):
-            init_states.append(self.cell_list[i].init_hidden(batch_size, cuda))
+            init_states.append(self.cell_list[i].init_hidden(batch_size))
         return init_states
 
     @staticmethod

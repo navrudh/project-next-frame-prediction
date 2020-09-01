@@ -1,4 +1,4 @@
-import torch.nn as nn
+from torch import nn
 
 from project.nn.conv import LocationAwareConv2d
 from project.nn.convgru import ConvGRU
