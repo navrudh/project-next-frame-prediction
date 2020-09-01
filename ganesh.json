@@ -1,6 +1,10 @@
 {
+  "dataloader": {
+    "workers": 8
+  },
   "ucf101": {
     "root": "/home/user/ganesh/datasets/UCF101/UCF-101",
-    "anno": "/home/user/ganesh/datasets/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist"
+    "anno": "/home/user/ganesh/datasets/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
+    "workers": 12
   }
 }

@@ -39,13 +39,13 @@ def custom_collate(batch):
 # HHHHHHHHHHH
 class SelfSupervisedVideoPredictionLitModel(LightningModule):
     def __init__(
-        self,
-        hidden_dims: List[int],
-        latent_block_dims: List[int],
-        batch_size: int = 1,
-        l1_loss_wt: int = 0.16,
-        l2_loss_wt: int = 0.0005,
-        ssim_loss_wt: int = 0.84,
+            self,
+            hidden_dims: List[int],
+            latent_block_dims: List[int],
+            batch_size: int = 1,
+            l1_loss_wt: int = 0.16,
+            l2_loss_wt: int = 0.0005,
+            ssim_loss_wt: int = 0.84,
     ):
         super().__init__()
         self.batch_size = batch_size
@@ -82,9 +82,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
     def loss(self, t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
         ssim_loss = 1.0 - self.ssim_loss(t1, t2)
         return (
-            self.ssim_loss_wt * ssim_loss
-            + self.l1_loss_wt * self.l1_loss(t1, t2)
-            + self.l2_loss_wt * self.l2_loss(t1, t2)
+                self.ssim_loss_wt * ssim_loss
+                + self.l1_loss_wt * self.l1_loss(t1, t2)
+                + self.l2_loss_wt * self.l2_loss(t1, t2)
         )
 
     def forward(self, x):
@@ -93,8 +93,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=0.001, weight_decay=1e-5)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=8, gamma=0.5)
-        return [optimizer], [scheduler]
+        return optimizer
 
     def train_dataloader(self) -> DataLoader:
         print("train_dataloader -- loading")
@@ -103,14 +102,14 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             config["ucf101"]["anno"],
             frames_per_clip=9,
             step_between_clips=8,
-            num_workers=8,
+            num_workers=config["ucf101"]["workers"],
             train=True,
             transform=self.data_transforms["video"],
         )
         train_dataloader = DataLoader(
             train_dataset,
             batch_size=self.batch_size,
-            num_workers=8,
+            num_workers=config["dataloader"]["workers"],
             shuffle=True,
             collate_fn=custom_collate,
         )
@@ -130,9 +129,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
 
 def train_model(
-    lit_model: LightningModule,
-    tensorboard_graph_name: str = None,
-    max_epochs: int = 10,
+        lit_model: LightningModule,
+        tensorboard_graph_name: str = None,
+        max_epochs: int = 10,
 ):
     logger = False
     if tensorboard_graph_name:

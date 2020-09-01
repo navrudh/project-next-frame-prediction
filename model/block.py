@@ -51,7 +51,7 @@ class LatentBlock(nn.Module):
         # print("LAT-BLK", x.shape)
         x0 = self.conv1x1(x)
 
-        _x = x.unsqueeze(0)
+        _x = x.view(self.batch_size, -1, *x.shape[1:])
         hidden = self.convgru1.get_init_states(self.batch_size)
         x1, _ = self.convgru1(_x, hidden)
         hidden = self.convgru2.get_init_states(self.batch_size)

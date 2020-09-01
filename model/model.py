@@ -53,10 +53,10 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         lb2 = self.latent_block_2(self.lateral_inputs[self.enc2lateral_hook_layers[2]])
         lb3 = self.latent_block_3(self.lateral_inputs[self.enc2lateral_hook_layers[3]])
 
-        lb0 = tuple(it.squeeze_() for it in lb0)
-        lb1 = tuple(it.squeeze_() for it in lb1)
-        lb2 = tuple(it.squeeze_() for it in lb2)
-        lb3 = tuple(it.squeeze_() for it in lb3)
+        lb0 = tuple(it.view(-1, *it.shape[-3:]) for it in lb0)
+        lb1 = tuple(it.view(-1, *it.shape[-3:]) for it in lb1)
+        lb2 = tuple(it.view(-1, *it.shape[-3:]) for it in lb2)
+        lb3 = tuple(it.view(-1, *it.shape[-3:]) for it in lb3)
 
         x = self.lateral_inputs[self.enc2lateral_hook_layers[4]]
         # print("DEC-BLK-1", x.shape)
