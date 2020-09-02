@@ -51,17 +51,20 @@ class LatentBlock(nn.Module):
             kernel_size=(7, 7),
         )
 
-    def forward(self, x):
+    def forward(self, x, test=False):
         # print("LAT-BLK", x.shape)
         x0 = self.conv1x1(x)
 
         _x = x.view(self.batch_size, -1, *x.shape[1:])
         hidden = self.convgru1.get_init_states(self.batch_size)
-        x1, _ = self.convgru1(_x, hidden)
+        x1, hidden_state_1 = self.convgru1(_x, hidden)
         hidden = self.convgru2.get_init_states(self.batch_size)
-        x2, _ = self.convgru2(_x, hidden)
+        x2, hidden_state_2 = self.convgru2(_x, hidden)
         hidden = self.convgru3.get_init_states(self.batch_size)
-        x3, _ = self.convgru3(_x, hidden)
+        x3, hidden_state_3 = self.convgru3(_x, hidden)
+
+        if test:
+            return hidden_state_1[-1], hidden_state_2[-1], hidden_state_3[-1]
 
         return x0, x1, x2, x3
 

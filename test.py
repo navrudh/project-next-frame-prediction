@@ -1,6 +1,5 @@
 import torch
-from pytorch_lightning.metrics import SSIM
-from torch import nn, device as torch_device, cuda as torch_cuda
+from torch import device as torch_device, cuda as torch_cuda
 
 from project.model.model import SelfSupervisedVideoPredictionModel
 
@@ -16,14 +15,23 @@ model = model.cuda()
 
 inp = torch.randn((2, 5, 3, 224, 224)).to(device)
 _inp = inp.view(-1, 3, 224, 224)
-x = model(_inp)
-print("TEST pred", x.shape)
-loss = SSIM(data_range=1.0)
-l = loss(
-    nn.functional.interpolate(
-        inp[:, -3:, :, :, :].reshape(-1, 3, 224, 224), size=(112, 112)
-    ),
-    x,
-)
-print(l)
-exit()
+
+## TRAIN
+# x = model(_inp)
+# print("TEST pred", x.shape)
+# loss = SSIM(data_range=1.0)
+# l = loss(
+#     nn.functional.interpolate(
+#         inp[:, -3:, :, :, :].reshape(-1, 3, 224, 224), size=(112, 112)
+#     ),
+#     x,
+# )
+# print(l)
+# exit()
+
+## TEST
+hidden_states = model.forward(_inp, test=True)
+print("HIDDEN", hidden_states.shape)
+# hidden_states = torch.unbind(hidden_states)
+# for hs in hidden_states:
+#     print('HIDDEN', hs.shape)

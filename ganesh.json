@@ -7,7 +7,11 @@
     "anno": "/home/user/ganesh/datasets/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
     "workers": 11
   },
-  "trainer": {
-    "checkpoint": "/home/user/ganesh/models/vision-classification/pl-trainer.ckpt"
+  "prediction": {
+    "model": "/home/user/ganesh/models/vision-classification/vp-trainer.ckpt",
+    "epochs": 4
+  },
+  "classification": {
+    "root": "/home/user/ganesh/datasets/vision-classification/tensors"
   }
 }

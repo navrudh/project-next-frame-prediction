@@ -1,8 +1,8 @@
 from typing import List
 
 import torch
-import torch.nn as nn
 import torchvision
+from torch import nn
 
 from project.model.block import LatentBlock, DecoderBlock
 
@@ -59,12 +59,31 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
             + list(self.decoder_block_5.parameters())
         )
 
-    def forward(self, x):
+    def forward(self, x, test=False, pooling_kernel=(1, 1)):
         self.encoder(x)
-        lb0 = self.latent_block_0(self.lateral_inputs[self.enc2lateral_hook_layers[0]])
-        lb1 = self.latent_block_1(self.lateral_inputs[self.enc2lateral_hook_layers[1]])
-        lb2 = self.latent_block_2(self.lateral_inputs[self.enc2lateral_hook_layers[2]])
-        lb3 = self.latent_block_3(self.lateral_inputs[self.enc2lateral_hook_layers[3]])
+        lb0 = self.latent_block_0.forward(
+            self.lateral_inputs[self.enc2lateral_hook_layers[0]], test=test
+        )
+        lb1 = self.latent_block_1.forward(
+            self.lateral_inputs[self.enc2lateral_hook_layers[1]], test=test
+        )
+        lb2 = self.latent_block_2.forward(
+            self.lateral_inputs[self.enc2lateral_hook_layers[2]], test=test
+        )
+        lb3 = self.latent_block_3.forward(
+            self.lateral_inputs[self.enc2lateral_hook_layers[3]], test=test
+        )
+
+        if test:
+            return torch.cat(
+                tuple(
+                    nn.functional.adaptive_avg_pool2d(
+                        torch.cat(lb, dim=1), pooling_kernel
+                    )
+                    for lb in [lb0, lb1, lb2, lb3]
+                ),
+                dim=1,
+            )
 
         lb0 = tuple(
             it.view(self.batch_size, -1, *it.shape[-3:])[:, -3:, :, :, :].reshape(

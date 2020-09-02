@@ -6,5 +6,8 @@
     "root": "/media/navrudh/Data/ML/dataset/UCF101/UCF-101",
     "anno": "/media/navrudh/Data/ML/dataset/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
     "workers": 7
+  },
+  "classification": {
+    "root": "/media/navrudh/Data/ML/dataset/vision-classification/tensors"
   }
 }
