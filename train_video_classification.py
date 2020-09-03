@@ -61,9 +61,9 @@ class VideoClassificationModel(LightningModule):
         loss = self.loss(y_hat, y)
 
         labels_hat = torch.argmax(y_hat, dim=1)
-        acc = torch.sum(y == labels_hat).item() / (len(y) * 1.0)
+        acc = torch.sum(y == labels_hat).detach() / (len(y) * 1.0)
 
-        tensorboard_logs = {"train_loss": loss.item(), "train_acc": acc}
+        tensorboard_logs = {"train_loss": loss, "train_acc": acc}
         tqdm_dict = {"acc": acc}
         return {"loss": loss, "progress_bar": tqdm_dict, "log": tensorboard_logs}
 

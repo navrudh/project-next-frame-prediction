@@ -172,7 +172,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         next = next.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
         next = F.max_pool2d(next, 2)
         loss = self.criterion(pred, next)
-        tensorboard_logs = {"train_loss": loss.item()}
+        tensorboard_logs = {"train_loss": loss}
         return {"loss": loss, "log": tensorboard_logs}
 
     def test_step(self, batch, batch_nb):
