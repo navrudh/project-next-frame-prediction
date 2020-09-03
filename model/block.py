@@ -6,14 +6,9 @@ from project.nn.convgru import ConvGRU
 
 class LatentBlock(nn.Module):
     def __init__(
-        self,
-        hidden_dim: int,
-        input_dim: int,
-        location_aware: bool = False,
-        batch_size: int = 1,
+        self, hidden_dim: int, input_dim: int, location_aware: bool = False,
     ):
         super().__init__()
-        self.batch_size = batch_size
         # self.lstm_dims = [128, 128, 64]
         self.lstm_dims = [64]
         if location_aware:
@@ -55,12 +50,12 @@ class LatentBlock(nn.Module):
         # print("LAT-BLK", x.shape)
         x0 = self.conv1x1(x)
 
-        _x = x.view(self.batch_size, -1, *x.shape[1:])
-        hidden = self.convgru1.get_init_states(self.batch_size)
+        _x = x.view(-1, 5, *x.shape[-3:])
+        hidden = self.convgru1.get_init_states(_x.shape[0])
         x1, hidden_state_1 = self.convgru1(_x, hidden)
-        hidden = self.convgru2.get_init_states(self.batch_size)
+        hidden = self.convgru2.get_init_states(_x.shape[0])
         x2, hidden_state_2 = self.convgru2(_x, hidden)
-        hidden = self.convgru3.get_init_states(self.batch_size)
+        hidden = self.convgru3.get_init_states(_x.shape[0])
         x3, hidden_state_3 = self.convgru3(_x, hidden)
 
         if test:

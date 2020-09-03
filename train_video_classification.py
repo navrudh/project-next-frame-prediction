@@ -32,7 +32,7 @@ class VideoClassificationModel(LightningModule):
         self.loss = nn.NLLLoss()
 
     def forward(self, x):
-        x = x.view(self.batch_size, -1)
+        x = x.view(x.shape[0], -1)
         x = self.model(x)
         return F.log_softmax(x)
 

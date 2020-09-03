@@ -9,33 +9,26 @@ from project.model.block import LatentBlock, DecoderBlock
 
 class SelfSupervisedVideoPredictionModel(nn.Module):
     def __init__(
-        self, hidden_dims: List[int], latent_block_dims: List[int], batch_size: int = 32
+        self, hidden_dims: List[int], latent_block_dims: List[int],
     ):
         super().__init__()
-        self.batch_size = batch_size
         self.enc2lateral_hook_layers = ["conv1", "layer1", "layer2", "layer3", "layer4"]
         self.encoder = torchvision.models.resnet18(pretrained=True)
         self.latent_block_0 = LatentBlock(
-            hidden_dim=hidden_dims[0],
-            input_dim=latent_block_dims[0],
-            batch_size=batch_size,
+            hidden_dim=hidden_dims[0], input_dim=latent_block_dims[0],
         )
         self.latent_block_1 = LatentBlock(
-            hidden_dim=hidden_dims[1],
-            input_dim=latent_block_dims[1],
-            batch_size=batch_size,
+            hidden_dim=hidden_dims[1], input_dim=latent_block_dims[1],
         )
         self.latent_block_2 = LatentBlock(
             hidden_dim=hidden_dims[2],
             input_dim=latent_block_dims[2],
             location_aware=True,
-            batch_size=batch_size,
         )
         self.latent_block_3 = LatentBlock(
             hidden_dim=hidden_dims[3],
             input_dim=latent_block_dims[3],
             location_aware=True,
-            batch_size=batch_size,
         )
         self.decoder_block_1 = DecoderBlock(in_channels=512, batch_norm=False)
         self.decoder_block_2 = DecoderBlock(in_channels=320)
@@ -59,7 +52,7 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
             + list(self.decoder_block_5.parameters())
         )
 
-    def forward(self, x, test=False, pooling_kernel=(1, 1)):
+    def forward(self, x, test=False, pooling_out_size=(1, 1)):
         self.encoder(x)
         lb0 = self.latent_block_0.forward(
             self.lateral_inputs[self.enc2lateral_hook_layers[0]], test=test
@@ -78,7 +71,7 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
             return torch.cat(
                 tuple(
                     nn.functional.adaptive_avg_pool2d(
-                        torch.cat(lb, dim=1), pooling_kernel
+                        torch.cat(lb, dim=1), pooling_out_size
                     )
                     for lb in [lb0, lb1, lb2, lb3]
                 ),
@@ -86,36 +79,26 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
             )
 
         lb0 = tuple(
-            it.view(self.batch_size, -1, *it.shape[-3:])[:, -3:, :, :, :].reshape(
-                -1, *it.shape[-3:]
-            )
+            it.view(-1, 5, *it.shape[-3:])[:, -3:, :, :, :].reshape(-1, *it.shape[-3:])
             for it in lb0
         )
         lb1 = tuple(
-            it.view(self.batch_size, -1, *it.shape[-3:])[:, -3:, :, :, :].reshape(
-                -1, *it.shape[-3:]
-            )
+            it.view(-1, 5, *it.shape[-3:])[:, -3:, :, :, :].reshape(-1, *it.shape[-3:])
             for it in lb1
         )
         lb2 = tuple(
-            it.view(self.batch_size, -1, *it.shape[-3:])[:, -3:, :, :, :].reshape(
-                -1, *it.shape[-3:]
-            )
+            it.view(-1, 5, *it.shape[-3:])[:, -3:, :, :, :].reshape(-1, *it.shape[-3:])
             for it in lb2
         )
         lb3 = tuple(
-            it.view(self.batch_size, -1, *it.shape[-3:])[:, -3:, :, :, :].reshape(
-                -1, *it.shape[-3:]
-            )
+            it.view(-1, 5, *it.shape[-3:])[:, -3:, :, :, :].reshape(-1, *it.shape[-3:])
             for it in lb3
         )
 
         x = self.lateral_inputs[self.enc2lateral_hook_layers[4]]
         # print("DEC-BLK-1", x.shape)
         x = self.decoder_block_1(x)
-        x = x.view(self.batch_size, -1, *x.shape[-3:])[:, -3:, :, :, :].reshape(
-            -1, *x.shape[-3:]
-        )
+        x = x.view(-1, 5, *x.shape[-3:])[:, -3:, :, :, :].reshape(-1, *x.shape[-3:])
         # print("DEC-BLK-2: CAT ", x.shape, [it.shape for it in lb3])
         x = torch.cat(lb3 + (x,), dim=1)
         x = self.decoder_block_2(x)

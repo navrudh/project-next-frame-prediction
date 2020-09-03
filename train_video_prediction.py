@@ -96,7 +96,6 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         self.model = SelfSupervisedVideoPredictionModel(
             hidden_dims=hidden_dims,
             latent_block_dims=[self.image_dim // v for v in (2, 4, 8, 16)],
-            batch_size=batch_size,
         )
 
         self.classes = list(sorted(datasets.utils.list_dir(config["ucf101"]["root"])))
