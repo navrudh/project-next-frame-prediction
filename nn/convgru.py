@@ -168,7 +168,7 @@ class ConvGRU(nn.Module):
 
         self.reset_parameters()
 
-    def forward(self, input, hidden_state):
+    def forward(self, input, hidden_state=None):
         """
 
         Parameters
@@ -183,12 +183,12 @@ class ConvGRU(nn.Module):
         cur_layer_input = torch.unbind(input, dim=int(self.batch_first))
 
         if not hidden_state:
-            hidden_state = self.get_init_states(cur_layer_input[0].size(0))
+            hidden_state = self.get_init_states(cur_layer_input[0].shape[0])
 
         seq_len = len(cur_layer_input)
 
-        layer_output_list = []
         last_state_list = []
+        output_inner = None
 
         for layer_idx in range(self.num_layers):
             h = hidden_state[layer_idx]

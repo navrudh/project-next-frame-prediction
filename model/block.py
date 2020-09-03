@@ -51,12 +51,9 @@ class LatentBlock(nn.Module):
         x0 = self.conv1x1(x)
 
         _x = x.view(-1, 5, *x.shape[-3:])
-        hidden = self.convgru1.get_init_states(_x.shape[0])
-        x1, hidden_state_1 = self.convgru1(_x, hidden)
-        hidden = self.convgru2.get_init_states(_x.shape[0])
-        x2, hidden_state_2 = self.convgru2(_x, hidden)
-        hidden = self.convgru3.get_init_states(_x.shape[0])
-        x3, hidden_state_3 = self.convgru3(_x, hidden)
+        x1, hidden_state_1 = self.convgru1.forward(_x)
+        x2, hidden_state_2 = self.convgru2.forward(_x)
+        x3, hidden_state_3 = self.convgru3.forward(_x)
 
         if test:
             return hidden_state_1[-1], hidden_state_2[-1], hidden_state_3[-1]
