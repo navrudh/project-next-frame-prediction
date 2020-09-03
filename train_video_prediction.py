@@ -118,9 +118,10 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
-            self.model.parameters(), lr=0.0005, weight_decay=1e-5
+            self.model.parameters(), lr=0.001, weight_decay=1e-5
         )
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
+        return [optimizer], [scheduler]
 
     def train_dataloader(self) -> DataLoader:
         train_dataset = datasets.UCF101(
