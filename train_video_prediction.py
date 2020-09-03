@@ -216,11 +216,13 @@ def train_model(
             num_nodes=1,
             deterministic=True,
             max_epochs=config["prediction"]["epochs"],
+            # limit_train_batches=0.001,
         )
     else:
         trainer = Trainer(
             # precision=16, # 2x speedup but NAN loss after 500 steps
             # profiler=profiler,
+            # max_steps=100,  # for profiler
             checkpoint_callback=checkpoint_callback,
             callbacks=[SaveCheckpointAtEpochEnd(filepath=CHECKPOINT_PATH)],
             val_check_interval=0.5,
