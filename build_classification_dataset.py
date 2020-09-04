@@ -36,7 +36,7 @@ def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):
             deterministic=True,
             limit_train_batches=0.001,
             limit_test_batches=0.1,
-            max_steps=config["prediction"]["epochs"],
+            max_epochs=config["prediction"]["epochs"],
         )
         trainer.fit(lit_model)
         return lit_model, trainer
