@@ -34,8 +34,6 @@ def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):
             gpus=1,
             num_nodes=1,
             deterministic=True,
-            limit_train_batches=0.001,
-            limit_test_batches=0.1,
             max_epochs=config["prediction"]["epochs"],
         )
         trainer.fit(lit_model)
