@@ -9,24 +9,18 @@ import torch
 import torch.nn.functional as F
 import torchvision.datasets.utils
 import torchvision.transforms.functional as TV_F
-from pytorch_lightning import LightningModule, Trainer, seed_everything
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-from torch import device as torch_device, cuda as torch_cuda
 from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
 
 from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
 from project.model.model import SelfSupervisedVideoPredictionModel
+from project.utils.info import print_device, seed
 
-device = torch_device("cuda:0" if torch_cuda.is_available() else "cpu")
-print("Device:", device)
-if torch_cuda.is_available():
-    print("Device Name:", torch_cuda.get_device_name(0))
-
-seed = 42
-seed_everything(seed)
-print("Set Random Seed:", seed)
+print_device()
+seed(42)
 
 username = getpass.getuser()
 config = json.load(open(f"{username}.json"))

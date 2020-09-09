@@ -4,20 +4,14 @@ import os
 import shutil
 import sys
 
-from pytorch_lightning import Trainer, seed_everything
-from torch import device as torch_device, cuda as torch_cuda
+from pytorch_lightning import Trainer
 
 from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
 from project.utils.cli import query_yes_no
+from project.utils.info import print_device, seed
 
-device = torch_device("cuda:0" if torch_cuda.is_available() else "cpu")
-print("Device:", device)
-if torch_cuda.is_available():
-    print("Device Name:", torch_cuda.get_device_name(0))
-
-seed = 42
-seed_everything(seed)
-print("Set Random Seed:", seed)
+print_device()
+seed(42)
 
 username = getpass.getuser()
 config = json.load(open(f"{username}.json"))

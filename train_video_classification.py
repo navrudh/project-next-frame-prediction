@@ -5,20 +5,15 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytorch_lightning import Trainer, seed_everything, LightningModule
+from pytorch_lightning import Trainer, LightningModule
 from pytorch_lightning.loggers import TensorBoardLogger
-from torch import device as torch_device, cuda as torch_cuda
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import DatasetFolder
 
-device = torch_device("cuda:0" if torch_cuda.is_available() else "cpu")
-print("Device:", device)
-if torch_cuda.is_available():
-    print("Device Name:", torch_cuda.get_device_name(0))
+from project.utils.info import print_device, seed
 
-seed = 42
-seed_everything(seed)
-print("Set Random Seed:", seed)
+print_device()
+seed(42)
 
 username = getpass.getuser()
 config = json.load(open(f"{username}.json"))
