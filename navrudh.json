@@ -7,6 +7,10 @@
     "anno": "/media/navrudh/Data/ML/dataset/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
     "workers": 7
   },
+  "prediction": {
+    "model": "/media/navrudh/Data/models/vision-classification/vp-trainer.ckpt",
+    "epochs": 4
+  },
   "classification": {
     "root": "/media/navrudh/Data/ML/dataset/vision-classification/tensors"
   }
