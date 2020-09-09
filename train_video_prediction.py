@@ -156,7 +156,6 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             test_dataset,
             batch_size=self.batch_size,
             num_workers=config["dataloader"]["workers"],
-            shuffle=True,
             collate_fn=custom_collate,
         )
         return test_dataloader

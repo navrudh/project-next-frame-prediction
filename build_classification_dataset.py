@@ -25,7 +25,7 @@ CLASSIFICATION_DATASET = config["classification"]["root"]
 CHECKPOINT_PATH = config["prediction"]["model"]
 
 
-def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):
+def load_model(lit_model: SelfSupervisedVideoPredictionLitModel, ):
     if os.path.exists(CHECKPOINT_PATH):
         trainer = Trainer(
             resume_from_checkpoint=CHECKPOINT_PATH,
@@ -34,6 +34,7 @@ def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):
             gpus=1,
             num_nodes=1,
             deterministic=True,
+            # limit_test_batches=0.01, # for testing
             max_epochs=config["prediction"]["epochs"],
         )
         trainer.fit(lit_model)
@@ -49,19 +50,33 @@ lit_model = SelfSupervisedVideoPredictionLitModel(
 
 lit_model, trainer = load_model(lit_model)
 
-os.makedirs(CLASSIFICATION_DATASET, exist_ok=True)
-if len(os.listdir()) != 0:
-    if not query_yes_no(
-        f"You have a populated classification dataset at {CLASSIFICATION_DATASET}. "
-        "Do you want to and regenerate it (The existing folder will be deleted)?"
-    ):
-        print("Choosing to keep the existing dataset.")
-        exit()
 
-shutil.rmtree(CLASSIFICATION_DATASET)
-os.makedirs(CLASSIFICATION_DATASET)
-for folder in lit_model.classes:
-    os.mkdir(f"{CLASSIFICATION_DATASET}/{folder}")
-trainer.test(ckpt_path=CHECKPOINT_PATH)
+def build_dataset(dataset_save_dir, dataloader):
+    os.makedirs(dataset_save_dir, exist_ok=True)
+    os.makedirs(CLASSIFICATION_DATASET, exist_ok=True)
+    if len(os.listdir(dataset_save_dir)) != 0:
+        if not query_yes_no(
+                f"You have a populated classification dataset at {dataset_save_dir}. "
+                "Do you want to and regenerate it (The existing folder will be deleted)?"
+        ):
+            print("Choosing to keep the existing dataset.")
+            return
+    shutil.rmtree(dataset_save_dir)
+    shutil.rmtree(CLASSIFICATION_DATASET)
+    os.makedirs(CLASSIFICATION_DATASET, exist_ok=True)
+    for folder in lit_model.classes:
+        os.mkdir(f"{CLASSIFICATION_DATASET}/{folder}")
+    trainer.test(ckpt_path=CHECKPOINT_PATH, test_dataloaders=dataloader)
+    os.rename(CLASSIFICATION_DATASET, dataset_save_dir)
+
+
+build_dataset(
+    dataset_save_dir=os.path.abspath(os.path.join(CLASSIFICATION_DATASET, "../train")),
+    dataloader=lit_model.train_dataloader(),
+)
+build_dataset(
+    dataset_save_dir=os.path.abspath(os.path.join(CLASSIFICATION_DATASET, "../test")),
+    dataloader=lit_model.test_dataloader(),
+)
 
 print("Finished Building Dataset")
