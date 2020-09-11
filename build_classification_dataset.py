@@ -5,10 +5,13 @@ import shutil
 import sys
 
 from pytorch_lightning import Trainer
+from torch.utils.data.dataloader import DataLoader
+from torchvision import datasets
 
 from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
 from project.utils.cli import query_yes_no
 from project.utils.info import print_device, seed
+from project.utils.train import custom_collate
 
 print_device()
 seed(42)
@@ -19,7 +22,28 @@ CLASSIFICATION_DATASET = config["classification"]["root"]
 CHECKPOINT_PATH = config["prediction"]["model"]
 
 
-def load_model(lit_model: SelfSupervisedVideoPredictionLitModel, ):
+class ClassificationDatasetBuilder(SelfSupervisedVideoPredictionLitModel):
+    def test_dataloader(self):
+        test_dataset = datasets.UCF101(
+            config["ucf101"]["root"],
+            config["ucf101"]["anno"],
+            frames_per_clip=6,
+            step_between_clips=8,
+            num_workers=config["ucf101"]["workers"],
+            train=False,
+            transform=self.data_transforms["video"],
+        )
+        test_dataloader = DataLoader(
+            test_dataset,
+            batch_size=self.batch_size,
+            num_workers=config["dataloader"]["workers"],
+            shuffle=True,
+            collate_fn=custom_collate,
+        )
+        return test_dataloader
+
+
+def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):
     if os.path.exists(CHECKPOINT_PATH):
         trainer = Trainer(
             resume_from_checkpoint=CHECKPOINT_PATH,
@@ -38,9 +62,7 @@ def load_model(lit_model: SelfSupervisedVideoPredictionLitModel, ):
         sys.exit(-1)
 
 
-lit_model = SelfSupervisedVideoPredictionLitModel(
-    hidden_dims=[64, 64, 128, 256], batch_size=8
-)
+lit_model = ClassificationDatasetBuilder(hidden_dims=[64, 64, 128, 256], batch_size=8)
 
 lit_model, trainer = load_model(lit_model)
 
@@ -50,8 +72,8 @@ def build_dataset(dataset_save_dir, dataloader):
     os.makedirs(CLASSIFICATION_DATASET, exist_ok=True)
     if len(os.listdir(dataset_save_dir)) != 0:
         if not query_yes_no(
-                f"You have a populated classification dataset at {dataset_save_dir}. "
-                "Do you want to and regenerate it (The existing folder will be deleted)?"
+            f"You have a populated classification dataset at {dataset_save_dir}. "
+            "Do you want to and regenerate it (The existing folder will be deleted)?"
         ):
             print("Choosing to keep the existing dataset.")
             return

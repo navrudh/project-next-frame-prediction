@@ -18,6 +18,7 @@ from torchvision import datasets, transforms
 from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
 from project.model.model import SelfSupervisedVideoPredictionModel
 from project.utils.info import print_device, seed
+from project.utils.train import custom_collate
 
 print_device()
 seed(42)
@@ -26,13 +27,6 @@ username = getpass.getuser()
 config = json.load(open(f"{username}.json"))
 CLASSIFICATION_DATASET = config["classification"]["root"]
 CHECKPOINT_PATH = config["prediction"]["model"]
-
-
-def custom_collate(batch):
-    filtered_batch = []
-    for video, _, label in batch:
-        filtered_batch.append((video, label))
-    return torch.utils.data.dataloader.default_collate(filtered_batch)
 
 
 # Dataset:
@@ -135,24 +129,6 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             collate_fn=custom_collate,
         )
         return train_dataloader
-
-    def test_dataloader(self):
-        test_dataset = datasets.UCF101(
-            config["ucf101"]["root"],
-            config["ucf101"]["anno"],
-            frames_per_clip=6,
-            step_between_clips=8,
-            num_workers=config["ucf101"]["workers"],
-            train=False,
-            transform=self.data_transforms["video"],
-        )
-        test_dataloader = DataLoader(
-            test_dataset,
-            batch_size=self.batch_size,
-            num_workers=config["dataloader"]["workers"],
-            collate_fn=custom_collate,
-        )
-        return test_dataloader
 
     def training_step(self, batch, batch_nb):
         x, y = batch
