@@ -1,16 +1,12 @@
 import os
 import shutil
 import sys
+import uuid
 
+import torch
 from pytorch_lightning import Trainer
-from torch.utils.data.dataloader import DataLoader
-from torchvision import datasets
 
 from project.config.user_config import (
-    UCF101_ROOT_PATH,
-    UCF101_ANNO_PATH,
-    UCF101_WORKERS,
-    DATALOADER_WORKERS,
     PREDICTION_MODEL_CHECKPOINT,
     CLASSIFICATION_DATASET_PATH,
     PREDICTION_MAX_EPOCHS,
@@ -18,31 +14,25 @@ from project.config.user_config import (
 from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
 from project.utils.cli import query_yes_no
 from project.utils.info import print_device, seed
-from project.utils.train import custom_collate
 
 print_device()
 seed(42)
 
 
 class ClassificationDatasetBuilder(SelfSupervisedVideoPredictionLitModel):
-    def test_dataloader(self):
-        test_dataset = datasets.UCF101(
-            UCF101_ROOT_PATH,
-            UCF101_ANNO_PATH,
-            frames_per_clip=6,
-            step_between_clips=8,
-            num_workers=UCF101_WORKERS,
-            train=False,
-            transform=self.data_transforms["video"],
-        )
-        test_dataloader = DataLoader(
-            test_dataset,
-            batch_size=self.batch_size,
-            num_workers=DATALOADER_WORKERS,
-            shuffle=True,
-            collate_fn=custom_collate,
-        )
-        return test_dataloader
+    def test_step(self, batch, batch_nb):
+        # Save Hidden Layers under batch numbers
+        x, y = batch
+        curr = x[:, :5, :, :, :]
+        curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
+        convgru_hidden_states = self.model.forward(curr, test=True)
+        dim = convgru_hidden_states.shape[0]
+        convgru_hidden_states = torch.unbind(convgru_hidden_states)
+        for i in range(dim):
+            torch.save(
+                torch.squeeze(convgru_hidden_states[i]),
+                f"{CLASSIFICATION_DATASET_PATH}/{self.class_to_idx[y[i].item()]}/{uuid.uuid1()}.pt",
+            )
 
 
 def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):

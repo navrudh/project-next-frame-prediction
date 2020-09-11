@@ -1,5 +1,4 @@
 import os
-import uuid
 from typing import List
 
 import pytorch_lightning.metrics.functional as PL_F
@@ -19,7 +18,6 @@ from project.config.user_config import (
     UCF101_ANNO_PATH,
     UCF101_WORKERS,
     DATALOADER_WORKERS,
-    CLASSIFICATION_DATASET_PATH,
     PREDICTION_MODEL_CHECKPOINT,
     PREDICTION_MAX_EPOCHS,
 )
@@ -30,6 +28,7 @@ from project.utils.train import custom_collate
 
 print_device()
 seed(42)
+
 
 # Dataset:
 # https://www.crcv.ucf.edu/data/UCF101/UCF101.rar
@@ -132,6 +131,25 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         )
         return train_dataloader
 
+    def test_dataloader(self):
+        test_dataset = datasets.UCF101(
+            UCF101_ROOT_PATH,
+            UCF101_ANNO_PATH,
+            frames_per_clip=6,
+            step_between_clips=8,
+            num_workers=UCF101_WORKERS,
+            train=False,
+            transform=self.data_transforms["video"],
+        )
+        test_dataloader = DataLoader(
+            test_dataset,
+            batch_size=self.batch_size,
+            num_workers=DATALOADER_WORKERS,
+            shuffle=True,
+            collate_fn=custom_collate,
+        )
+        return test_dataloader
+
     def training_step(self, batch, batch_nb):
         x, y = batch
         # pick 5 frames, first 3 are seeds, then predict next 3
@@ -146,20 +164,6 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         loss = self.criterion(pred, next)
         tensorboard_logs = {"train_loss": loss}
         return {"loss": loss, "log": tensorboard_logs}
-
-    def test_step(self, batch, batch_nb):
-        # Save Hidden Layers under batch numbers
-        x, y = batch
-        curr = x[:, :5, :, :, :]
-        curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
-        convgru_hidden_states = self.model.forward(curr, test=True)
-        dim = convgru_hidden_states.shape[0]
-        convgru_hidden_states = torch.unbind(convgru_hidden_states)
-        for i in range(dim):
-            torch.save(
-                torch.squeeze(convgru_hidden_states[i]),
-                f"{CLASSIFICATION_DATASET_PATH}/{self.class_to_idx[y[i].item()]}/{uuid.uuid1()}.pt",
-            )
 
 
 checkpoint_callback = ModelCheckpoint(
