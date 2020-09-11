@@ -1,3 +1,9 @@
+"""
+Credits:
+
+LocationAwareConv2d class was taken from the repository https://github.com/AIS-Bonn/LocDepVideoPrediction
+"""
+
 import torch
 from torch import device as torch_device, cuda as torch_cuda
 

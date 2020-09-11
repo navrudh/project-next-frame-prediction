@@ -1,5 +1,3 @@
-import getpass
-import json
 import os
 
 import torch
@@ -10,14 +8,11 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import DatasetFolder
 
+from project.config.user_config import CLASSIFICATION_DATASET_PATH
 from project.utils.info import print_device, seed
 
 print_device()
 seed(42)
-
-username = getpass.getuser()
-config = json.load(open(f"{username}.json"))
-CLASSIFICATION_DATASET = config["classification"]["root"]
 
 
 class VideoClassificationModel(LightningModule):
@@ -41,7 +36,7 @@ class VideoClassificationModel(LightningModule):
 
     def train_dataloader(self):
         dataset = DatasetFolder(
-            os.path.abspath(os.path.join(CLASSIFICATION_DATASET, "../train")),
+            os.path.abspath(os.path.join(CLASSIFICATION_DATASET_PATH, "../train")),
             loader=torch.load,
             extensions=tuple(".pt"),
         )
@@ -50,7 +45,7 @@ class VideoClassificationModel(LightningModule):
 
     def val_dataloader(self):
         dataset = DatasetFolder(
-            os.path.abspath(os.path.join(CLASSIFICATION_DATASET, "../test")),
+            os.path.abspath(os.path.join(CLASSIFICATION_DATASET_PATH, "../test")),
             loader=torch.load,
             extensions=tuple(".pt"),
         )

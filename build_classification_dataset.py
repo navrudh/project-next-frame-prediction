@@ -1,5 +1,3 @@
-import getpass
-import json
 import os
 import shutil
 import sys
@@ -8,6 +6,15 @@ from pytorch_lightning import Trainer
 from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets
 
+from project.config.user_config import (
+    UCF101_ROOT_PATH,
+    UCF101_ANNO_PATH,
+    UCF101_WORKERS,
+    DATALOADER_WORKERS,
+    PREDICTION_MODEL_CHECKPOINT,
+    CLASSIFICATION_DATASET_PATH,
+    PREDICTION_MAX_EPOCHS,
+)
 from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
 from project.utils.cli import query_yes_no
 from project.utils.info import print_device, seed
@@ -16,27 +23,22 @@ from project.utils.train import custom_collate
 print_device()
 seed(42)
 
-username = getpass.getuser()
-config = json.load(open(f"{username}.json"))
-CLASSIFICATION_DATASET = config["classification"]["root"]
-CHECKPOINT_PATH = config["prediction"]["model"]
-
 
 class ClassificationDatasetBuilder(SelfSupervisedVideoPredictionLitModel):
     def test_dataloader(self):
         test_dataset = datasets.UCF101(
-            config["ucf101"]["root"],
-            config["ucf101"]["anno"],
+            UCF101_ROOT_PATH,
+            UCF101_ANNO_PATH,
             frames_per_clip=6,
             step_between_clips=8,
-            num_workers=config["ucf101"]["workers"],
+            num_workers=UCF101_WORKERS,
             train=False,
             transform=self.data_transforms["video"],
         )
         test_dataloader = DataLoader(
             test_dataset,
             batch_size=self.batch_size,
-            num_workers=config["dataloader"]["workers"],
+            num_workers=DATALOADER_WORKERS,
             shuffle=True,
             collate_fn=custom_collate,
         )
@@ -44,16 +46,16 @@ class ClassificationDatasetBuilder(SelfSupervisedVideoPredictionLitModel):
 
 
 def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):
-    if os.path.exists(CHECKPOINT_PATH):
+    if os.path.exists(PREDICTION_MODEL_CHECKPOINT):
         trainer = Trainer(
-            resume_from_checkpoint=CHECKPOINT_PATH,
+            resume_from_checkpoint=PREDICTION_MODEL_CHECKPOINT,
             checkpoint_callback=False,
             logger=False,
             gpus=1,
             num_nodes=1,
             deterministic=True,
             # limit_test_batches=0.01, # for testing
-            max_epochs=config["prediction"]["epochs"],
+            max_epochs=PREDICTION_MAX_EPOCHS,
         )
         trainer.fit(lit_model)
         return lit_model, trainer
@@ -69,7 +71,7 @@ lit_model, trainer = load_model(lit_model)
 
 def build_dataset(dataset_save_dir, dataloader):
     os.makedirs(dataset_save_dir, exist_ok=True)
-    os.makedirs(CLASSIFICATION_DATASET, exist_ok=True)
+    os.makedirs(CLASSIFICATION_DATASET_PATH, exist_ok=True)
     if len(os.listdir(dataset_save_dir)) != 0:
         if not query_yes_no(
             f"You have a populated classification dataset at {dataset_save_dir}. "
@@ -78,20 +80,24 @@ def build_dataset(dataset_save_dir, dataloader):
             print("Choosing to keep the existing dataset.")
             return
     shutil.rmtree(dataset_save_dir)
-    shutil.rmtree(CLASSIFICATION_DATASET)
-    os.makedirs(CLASSIFICATION_DATASET, exist_ok=True)
+    shutil.rmtree(CLASSIFICATION_DATASET_PATH)
+    os.makedirs(CLASSIFICATION_DATASET_PATH, exist_ok=True)
     for folder in lit_model.classes:
-        os.mkdir(f"{CLASSIFICATION_DATASET}/{folder}")
-    trainer.test(ckpt_path=CHECKPOINT_PATH, test_dataloaders=dataloader)
-    os.rename(CLASSIFICATION_DATASET, dataset_save_dir)
+        os.mkdir(f"{CLASSIFICATION_DATASET_PATH}/{folder}")
+    trainer.test(ckpt_path=PREDICTION_MODEL_CHECKPOINT, test_dataloaders=dataloader)
+    os.rename(CLASSIFICATION_DATASET_PATH, dataset_save_dir)
 
 
 build_dataset(
-    dataset_save_dir=os.path.abspath(os.path.join(CLASSIFICATION_DATASET, "../train")),
+    dataset_save_dir=os.path.abspath(
+        os.path.join(CLASSIFICATION_DATASET_PATH, "../train")
+    ),
     dataloader=lit_model.train_dataloader(),
 )
 build_dataset(
-    dataset_save_dir=os.path.abspath(os.path.join(CLASSIFICATION_DATASET, "../test")),
+    dataset_save_dir=os.path.abspath(
+        os.path.join(CLASSIFICATION_DATASET_PATH, "../test")
+    ),
     dataloader=lit_model.test_dataloader(),
 )
 

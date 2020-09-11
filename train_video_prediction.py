@@ -1,5 +1,3 @@
-import getpass
-import json
 import os
 import uuid
 from typing import List
@@ -16,6 +14,15 @@ from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
 
 from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
+from project.config.user_config import (
+    UCF101_ROOT_PATH,
+    UCF101_ANNO_PATH,
+    UCF101_WORKERS,
+    DATALOADER_WORKERS,
+    CLASSIFICATION_DATASET_PATH,
+    PREDICTION_MODEL_CHECKPOINT,
+    PREDICTION_MAX_EPOCHS,
+)
 from project.model.model import SelfSupervisedVideoPredictionModel
 from project.utils.function import get_kwargs
 from project.utils.info import print_device, seed
@@ -23,12 +30,6 @@ from project.utils.train import custom_collate
 
 print_device()
 seed(42)
-
-username = getpass.getuser()
-config = json.load(open(f"{username}.json"))
-CLASSIFICATION_DATASET = config["classification"]["root"]
-CHECKPOINT_PATH = config["prediction"]["model"]
-
 
 # Dataset:
 # https://www.crcv.ucf.edu/data/UCF101/UCF101.rar
@@ -87,7 +88,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             latent_block_dims=[self.image_dim // v for v in (2, 4, 8, 16)],
         )
 
-        self.classes = list(sorted(datasets.utils.list_dir(config["ucf101"]["root"])))
+        self.classes = list(sorted(datasets.utils.list_dir(UCF101_ROOT_PATH)))
         self.class_to_idx = {i: self.classes[i] for i in range(len(self.classes))}
 
     def criterion(self, t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
@@ -114,18 +115,18 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def train_dataloader(self) -> DataLoader:
         train_dataset = datasets.UCF101(
-            config["ucf101"]["root"],
-            config["ucf101"]["anno"],
+            UCF101_ROOT_PATH,
+            UCF101_ANNO_PATH,
             frames_per_clip=6,
             step_between_clips=12,
-            num_workers=config["ucf101"]["workers"],
+            num_workers=UCF101_WORKERS,
             train=True,
             transform=self.data_transforms["video"],
         )
         train_dataloader = DataLoader(
             train_dataset,
             batch_size=self.batch_size,
-            num_workers=config["dataloader"]["workers"],
+            num_workers=DATALOADER_WORKERS,
             shuffle=True,
             collate_fn=custom_collate,
         )
@@ -157,12 +158,16 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         for i in range(dim):
             torch.save(
                 torch.squeeze(convgru_hidden_states[i]),
-                f"{CLASSIFICATION_DATASET}/{self.class_to_idx[y[i].item()]}/{uuid.uuid1()}.pt",
+                f"{CLASSIFICATION_DATASET_PATH}/{self.class_to_idx[y[i].item()]}/{uuid.uuid1()}.pt",
             )
 
 
 checkpoint_callback = ModelCheckpoint(
-    filepath=CHECKPOINT_PATH, save_top_k=1, verbose=True, monitor="epoch", mode="max",
+    filepath=PREDICTION_MODEL_CHECKPOINT,
+    save_top_k=1,
+    verbose=True,
+    monitor="epoch",
+    mode="max",
 )
 
 
@@ -182,21 +187,23 @@ def load_or_train_model(
         kwargs.update(
             get_kwargs(
                 checkpoint_callback=checkpoint_callback,
-                callbacks=[SaveCheckpointAtEpochEnd(filepath=CHECKPOINT_PATH)],
+                callbacks=[
+                    SaveCheckpointAtEpochEnd(filepath=PREDICTION_MODEL_CHECKPOINT)
+                ],
             )
         )
     if gif_mode:
         kwargs.update(get_kwargs(limit_test_batches=0.001, limit_train_batches=0.001))
 
-    if os.path.exists(CHECKPOINT_PATH):
+    if os.path.exists(PREDICTION_MODEL_CHECKPOINT):
         trainer = Trainer(
-            resume_from_checkpoint=CHECKPOINT_PATH,
+            resume_from_checkpoint=PREDICTION_MODEL_CHECKPOINT,
             val_check_interval=0.5,
             logger=logger,
             gpus=1,
             num_nodes=1,
             deterministic=True,
-            max_epochs=config["prediction"]["epochs"],
+            max_epochs=PREDICTION_MAX_EPOCHS,
             # limit_train_batches=0.001,
             **kwargs,
         )
@@ -210,7 +217,7 @@ def load_or_train_model(
             gpus=1,
             num_nodes=1,
             deterministic=True,
-            max_epochs=config["prediction"]["epochs"],
+            max_epochs=PREDICTION_MAX_EPOCHS,
             **kwargs,
         )
     trainer.fit(lit_model)
