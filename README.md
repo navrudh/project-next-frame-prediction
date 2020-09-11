@@ -12,5 +12,13 @@
 
   - ```resources/config/user-{linux_or_windows_user}.json``` - create a similar configuration file specifying the UCF101 dataset location, number of workers for processing, classification dataset directory, etc
 
+## Instructions to run script:
+
+1. Make sure you have created a user config.
+
+2. Please set the `PYTHONPATH` environment variable in order to run the scripts.
+
+3. You can execute each script by calling `python script_file.py`
+
 ## Sample Output
 ![YOYO](resources/yoyo-gif-output.gif)
