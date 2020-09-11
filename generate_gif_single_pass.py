@@ -52,7 +52,11 @@ class GifGenerator(SelfSupervisedVideoPredictionLitModel):
                 torchvision.utils.save_image(
                     image_tensor, fp=f"{PREDICTION_OUTPUT_DIR}/{file_name}-{seq_no}.jpg"
                 )
-            generate_gif(PREDICTION_OUTPUT_DIR, file_glob=f"{file_name}*.jpg")
+            generate_gif(
+                PREDICTION_OUTPUT_DIR,
+                file_glob=f"{file_name}*.jpg",
+                gif_name=f"{PREDICTION_OUTPUT_DIR}/{file_name}.gif",
+            )
 
 
 lit_model = GifGenerator(hidden_dims=[64, 64, 128, 256], batch_size=8)
