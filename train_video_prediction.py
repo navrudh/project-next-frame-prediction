@@ -17,6 +17,7 @@ from torchvision import datasets, transforms
 
 from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
 from project.model.model import SelfSupervisedVideoPredictionModel
+from project.utils.function import get_kwargs
 from project.utils.info import print_device, seed
 from project.utils.train import custom_collate
 
@@ -165,20 +166,31 @@ checkpoint_callback = ModelCheckpoint(
 )
 
 
-def train_model(
+def load_or_train_model(
     lit_model: SelfSupervisedVideoPredictionLitModel,
     tensorboard_graph_name: str = None,
+    save=True,
+    gif_mode=False,
 ):
     logger = False
     if tensorboard_graph_name:
         logger = TensorBoardLogger("lightning_logs", name=tensorboard_graph_name)
     # profiler = AdvancedProfiler()
 
+    kwargs = {}
+    if save:
+        kwargs.update(
+            get_kwargs(
+                checkpoint_callback=checkpoint_callback,
+                callbacks=[SaveCheckpointAtEpochEnd(filepath=CHECKPOINT_PATH)],
+            )
+        )
+    if gif_mode:
+        kwargs.update(get_kwargs(limit_test_batches=0.001, limit_train_batches=0.001))
+
     if os.path.exists(CHECKPOINT_PATH):
         trainer = Trainer(
             resume_from_checkpoint=CHECKPOINT_PATH,
-            checkpoint_callback=checkpoint_callback,
-            callbacks=[SaveCheckpointAtEpochEnd(filepath=CHECKPOINT_PATH)],
             val_check_interval=0.5,
             logger=logger,
             gpus=1,
@@ -186,20 +198,20 @@ def train_model(
             deterministic=True,
             max_epochs=config["prediction"]["epochs"],
             # limit_train_batches=0.001,
+            **kwargs,
         )
     else:
         trainer = Trainer(
             # precision=16, # 2x speedup but NAN loss after 500 steps
             # profiler=profiler,
             # max_steps=100,  # for profiler
-            checkpoint_callback=checkpoint_callback,
-            callbacks=[SaveCheckpointAtEpochEnd(filepath=CHECKPOINT_PATH)],
             val_check_interval=0.5,
             logger=logger,
             gpus=1,
             num_nodes=1,
             deterministic=True,
             max_epochs=config["prediction"]["epochs"],
+            **kwargs,
         )
     trainer.fit(lit_model)
     return lit_model, trainer
@@ -209,6 +221,6 @@ lit_model = SelfSupervisedVideoPredictionLitModel(
     hidden_dims=[64, 64, 128, 256], batch_size=8
 )
 
-lit_model, trainer = train_model(lit_model, "video_prediction")
+lit_model, trainer = load_or_train_model(lit_model, "video_prediction")
 
 print("Completed Video Prediction Training")

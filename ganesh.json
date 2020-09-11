@@ -9,6 +9,7 @@
   },
   "prediction": {
     "model": "/home/user/ganesh/models/vision-classification/vp-trainer.ckpt",
+    "outdir": "/home/user/ganesh/models/vision-classification/out",
     "epochs": 4
   },
   "classification": {
