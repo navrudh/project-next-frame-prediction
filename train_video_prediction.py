@@ -1,5 +1,4 @@
 import os
-from typing import List
 
 import pytorch_lightning.metrics.functional as PL_F
 import torch
@@ -35,7 +34,6 @@ seed(42)
 class SelfSupervisedVideoPredictionLitModel(LightningModule):
     def __init__(
         self,
-        hidden_dims: List[int],
         image_dim: int = 224,
         batch_size: int = 1,
         l1_loss_wt: int = 0.3,
@@ -83,7 +81,6 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         }
 
         self.model = SelfSupervisedVideoPredictionModel(
-            hidden_dims=hidden_dims,
             latent_block_dims=[self.image_dim // v for v in (2, 4, 8, 16)],
         )
 
@@ -228,9 +225,7 @@ def load_or_train_model(
     return lit_model, trainer
 
 
-lit_model = SelfSupervisedVideoPredictionLitModel(
-    hidden_dims=[64, 64, 128, 256], batch_size=8
-)
+lit_model = SelfSupervisedVideoPredictionLitModel(batch_size=8)
 
 lit_model, trainer = load_or_train_model(lit_model, "video_prediction")
 

@@ -8,10 +8,9 @@ from project.model.block import LatentBlock, DecoderBlock
 
 
 class SelfSupervisedVideoPredictionModel(nn.Module):
-    def __init__(
-        self, hidden_dims: List[int], latent_block_dims: List[int],
-    ):
+    def __init__(self, latent_block_dims: List[int]):
         super().__init__()
+        hidden_dims = [64, 64, 128, 256]
         self.enc2lateral_hook_layers = ["conv1", "layer1", "layer2", "layer3", "layer4"]
         self.encoder = torchvision.models.resnet18(pretrained=True)
         self.latent_block_0 = LatentBlock(
