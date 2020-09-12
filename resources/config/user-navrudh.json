@@ -5,6 +5,7 @@
   "ucf101": {
     "root": "/media/navrudh/Data/ML/dataset/UCF101/UCF-101",
     "anno": "/media/navrudh/Data/ML/dataset/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
+    "cache": "/media/navrudh/Data/ML/dataset/UCF101-Frames",
     "workers": 7
   },
   "prediction": {

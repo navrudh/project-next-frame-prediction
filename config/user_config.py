@@ -13,6 +13,7 @@ config = json.load(open(f"{settings_dir}/user-{username}.json"))
 UCF101_ROOT_PATH = config["ucf101"]["root"]
 UCF101_ANNO_PATH = config["ucf101"]["anno"]
 UCF101_WORKERS = config["ucf101"]["workers"]
+UCF101_CACHE = config["ucf101"]["cache"]
 
 # Dataloader Config Vars
 DATALOADER_WORKERS = config["dataloader"]["workers"]
