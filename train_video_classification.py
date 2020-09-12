@@ -103,7 +103,6 @@ def train_model(
         # profiler=profiler,
         logger=logger,
         gpus=1,
-        num_nodes=1,
         deterministic=True,
         max_epochs=max_epochs,
     )

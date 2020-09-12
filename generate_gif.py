@@ -16,9 +16,6 @@ from project.utils.image import generate_gif
 from project.utils.info import print_device, seed
 from project.utils.train import double_resolution
 
-print_device()
-seed(42)
-
 
 class GifGenerator(SelfSupervisedVideoPredictionLitModel):
     def test_step(self, batch, batch_nb):
@@ -80,13 +77,15 @@ class GifGenerator(SelfSupervisedVideoPredictionLitModel):
             )
 
 
-ucf101_dm = UCF101VideoDataModule(batch_size=8)
-lit_model = GifGenerator(datamodule=ucf101_dm)
+if __name__ == "__main__":
+    ucf101_dm = UCF101VideoDataModule(batch_size=8)
+    lit_model = GifGenerator(datamodule=ucf101_dm)
 
-lit_model, trainer = load_or_train_model(
-    lit_model, tensorboard_graph_name=None, gif_mode=True, save=False
-)
+    lit_model, trainer = load_or_train_model(
+        lit_model, tensorboard_graph_name=None, gif_mode=True, save=False
+    )
 
-trainer.test(
-    ckpt_path=PREDICTION_MODEL_CHECKPOINT, test_dataloaders=lit_model.test_dataloader()
-)
+    trainer.test(
+        ckpt_path=PREDICTION_MODEL_CHECKPOINT,
+        test_dataloaders=lit_model.test_dataloader(),
+    )

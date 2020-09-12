@@ -14,10 +14,6 @@ from project.config.user_config import (
 from project.dataset.ucf101video import UCF101VideoDataModule
 from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
 from project.utils.cli import query_yes_no
-from project.utils.info import print_device, seed
-
-print_device()
-seed(42)
 
 
 class ClassificationDatasetBuilder(SelfSupervisedVideoPredictionLitModel):
@@ -36,14 +32,13 @@ class ClassificationDatasetBuilder(SelfSupervisedVideoPredictionLitModel):
             )
 
 
-def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):
+def load_model(lit_model: SelfSupervisedVideoPredictionLitModel):
     if os.path.exists(PREDICTION_MODEL_CHECKPOINT):
         trainer = Trainer(
             resume_from_checkpoint=PREDICTION_MODEL_CHECKPOINT,
             checkpoint_callback=False,
             logger=False,
             gpus=1,
-            num_nodes=1,
             deterministic=True,
             # limit_test_batches=0.01, # for testing
             max_epochs=PREDICTION_MAX_EPOCHS,
@@ -55,13 +50,7 @@ def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):
         sys.exit(-1)
 
 
-ucf101_dm = UCF101VideoDataModule(batch_size=8)
-lit_model = ClassificationDatasetBuilder(datamodule=ucf101_dm)
-
-lit_model, trainer = load_model(lit_model)
-
-
-def build_dataset(dataset_save_dir, dataloader):
+def build_dataset(model, trainer, dataset_save_dir, dataloader):
     os.makedirs(dataset_save_dir, exist_ok=True)
     os.makedirs(CLASSIFICATION_DATASET_PATH, exist_ok=True)
     if len(os.listdir(dataset_save_dir)) != 0:
@@ -74,24 +63,32 @@ def build_dataset(dataset_save_dir, dataloader):
     shutil.rmtree(dataset_save_dir)
     shutil.rmtree(CLASSIFICATION_DATASET_PATH)
     os.makedirs(CLASSIFICATION_DATASET_PATH, exist_ok=True)
-    for folder in lit_model.classes:
+    for folder in model.classes:
         os.mkdir(f"{CLASSIFICATION_DATASET_PATH}/{folder}")
     trainer.test(ckpt_path=PREDICTION_MODEL_CHECKPOINT, test_dataloaders=dataloader)
     os.rename(CLASSIFICATION_DATASET_PATH, dataset_save_dir)
 
 
-ucf101_dm.setup()
-build_dataset(
-    dataset_save_dir=os.path.abspath(
-        os.path.join(CLASSIFICATION_DATASET_PATH, "../train")
-    ),
-    dataloader=ucf101_dm.train_dataloader(),
-)
-build_dataset(
-    dataset_save_dir=os.path.abspath(
-        os.path.join(CLASSIFICATION_DATASET_PATH, "../test")
-    ),
-    dataloader=ucf101_dm.test_dataloader(),
-)
+if __name__ == "__main__":
+    ucf101_dm = UCF101VideoDataModule(batch_size=8)
+    lit_model = ClassificationDatasetBuilder(datamodule=ucf101_dm)
+    lit_model, trainer = load_model(lit_model)
+    ucf101_dm.setup()
+    build_dataset(
+        lit_model,
+        trainer,
+        dataset_save_dir=os.path.abspath(
+            os.path.join(CLASSIFICATION_DATASET_PATH, "../train")
+        ),
+        dataloader=ucf101_dm.train_dataloader(),
+    )
+    build_dataset(
+        lit_model,
+        trainer,
+        dataset_save_dir=os.path.abspath(
+            os.path.join(CLASSIFICATION_DATASET_PATH, "../test")
+        ),
+        dataloader=ucf101_dm.test_dataloader(),
+    )
 
-print("Finished Building Dataset")
+    print("Finished Building Dataset")

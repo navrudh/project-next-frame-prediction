@@ -22,11 +22,16 @@ def save_batch(step_name, batch, batch_nb, batch_size, class_to_idx):
         )
 
 
-ucf101_dm = UCF101VideoDataModule(batch_size=8)
-ucf101_dm.setup("test")
-# for batch_nb, batch in tqdm(enumerate(ucf101_dm.train_dataloader())):
-#     save_batch('train_dataset', batch, batch_nb, ucf101_dm.batch_size, ucf101_dm.class_to_idx)
-for batch_nb, batch in enumerate(tqdm(ucf101_dm.test_dataloader())):
-    save_batch(
-        "test_dataset", batch, batch_nb, ucf101_dm.batch_size, ucf101_dm.class_to_idx
-    )
+if __name__ == "__main__":
+    ucf101_dm = UCF101VideoDataModule(batch_size=8)
+    ucf101_dm.setup("test")
+    # for batch_nb, batch in tqdm(enumerate(ucf101_dm.train_dataloader())):
+    #     save_batch('train_dataset', batch, batch_nb, ucf101_dm.batch_size, ucf101_dm.class_to_idx)
+    for batch_nb, batch in enumerate(tqdm(ucf101_dm.test_dataloader())):
+        save_batch(
+            "test_dataset",
+            batch,
+            batch_nb,
+            ucf101_dm.batch_size,
+            ucf101_dm.class_to_idx,
+        )

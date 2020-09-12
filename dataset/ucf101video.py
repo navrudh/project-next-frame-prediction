@@ -93,6 +93,7 @@ class UCF101VideoDataModule(LightningDataModule):
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
             collate_fn=custom_collate,
+            shuffle=True,
         )
 
     def test_dataloader(self):
