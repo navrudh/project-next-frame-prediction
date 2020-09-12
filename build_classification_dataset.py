@@ -11,6 +11,7 @@ from project.config.user_config import (
     CLASSIFICATION_DATASET_PATH,
     PREDICTION_MAX_EPOCHS,
 )
+from project.dataset.ucf101video import UCF101VideoDataModule
 from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
 from project.utils.cli import query_yes_no
 from project.utils.info import print_device, seed
@@ -54,7 +55,8 @@ def load_model(lit_model: SelfSupervisedVideoPredictionLitModel,):
         sys.exit(-1)
 
 
-lit_model = ClassificationDatasetBuilder(hidden_dims=[64, 64, 128, 256], batch_size=8)
+ucf101_dm = UCF101VideoDataModule(batch_size=8)
+lit_model = ClassificationDatasetBuilder(datamodule=ucf101_dm)
 
 lit_model, trainer = load_model(lit_model)
 
@@ -78,17 +80,18 @@ def build_dataset(dataset_save_dir, dataloader):
     os.rename(CLASSIFICATION_DATASET_PATH, dataset_save_dir)
 
 
+ucf101_dm.setup()
 build_dataset(
     dataset_save_dir=os.path.abspath(
         os.path.join(CLASSIFICATION_DATASET_PATH, "../train")
     ),
-    dataloader=lit_model.train_dataloader(),
+    dataloader=ucf101_dm.train_dataloader(),
 )
 build_dataset(
     dataset_save_dir=os.path.abspath(
         os.path.join(CLASSIFICATION_DATASET_PATH, "../test")
     ),
-    dataloader=lit_model.test_dataloader(),
+    dataloader=ucf101_dm.test_dataloader(),
 )
 
 print("Finished Building Dataset")

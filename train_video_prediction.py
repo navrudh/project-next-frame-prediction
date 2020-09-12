@@ -8,40 +8,34 @@ import torchvision.transforms.functional as TV_F
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
 
 from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
 from project.config.user_config import (
     UCF101_ROOT_PATH,
-    UCF101_ANNO_PATH,
-    UCF101_WORKERS,
-    DATALOADER_WORKERS,
     PREDICTION_MODEL_CHECKPOINT,
     PREDICTION_MAX_EPOCHS,
 )
+from project.dataset.ucf101video import UCF101VideoDataModule
 from project.model.model import SelfSupervisedVideoPredictionModel
 from project.utils.function import get_kwargs
 from project.utils.info import print_device, seed
-from project.utils.train import custom_collate
 
 print_device()
 seed(42)
 
 
-# Dataset:
-# https://www.crcv.ucf.edu/data/UCF101/UCF101.rar
 class SelfSupervisedVideoPredictionLitModel(LightningModule):
     def __init__(
         self,
+        datamodule,
         image_dim: int = 224,
-        batch_size: int = 1,
         l1_loss_wt: int = 0.3,
         l2_loss_wt: int = 0.05,
         ssim_loss_wt: int = 0.65,
     ):
         super().__init__()
-        self.batch_size = batch_size
+        self.datamodule = datamodule
         self.l1_loss_wt = l1_loss_wt
         self.l2_loss_wt = l2_loss_wt
         self.ssim_loss_wt = ssim_loss_wt
@@ -108,44 +102,6 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         )
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
         return [optimizer], [scheduler]
-
-    def train_dataloader(self) -> DataLoader:
-        train_dataset = datasets.UCF101(
-            UCF101_ROOT_PATH,
-            UCF101_ANNO_PATH,
-            frames_per_clip=6,
-            step_between_clips=12,
-            num_workers=UCF101_WORKERS,
-            train=True,
-            transform=self.data_transforms["video"],
-        )
-        train_dataloader = DataLoader(
-            train_dataset,
-            batch_size=self.batch_size,
-            num_workers=DATALOADER_WORKERS,
-            shuffle=True,
-            collate_fn=custom_collate,
-        )
-        return train_dataloader
-
-    def test_dataloader(self):
-        test_dataset = datasets.UCF101(
-            UCF101_ROOT_PATH,
-            UCF101_ANNO_PATH,
-            frames_per_clip=6,
-            step_between_clips=8,
-            num_workers=UCF101_WORKERS,
-            train=False,
-            transform=self.data_transforms["video"],
-        )
-        test_dataloader = DataLoader(
-            test_dataset,
-            batch_size=self.batch_size,
-            num_workers=DATALOADER_WORKERS,
-            shuffle=True,
-            collate_fn=custom_collate,
-        )
-        return test_dataloader
 
     def training_step(self, batch, batch_nb):
         x, y = batch
@@ -225,7 +181,8 @@ def load_or_train_model(
     return lit_model, trainer
 
 
-lit_model = SelfSupervisedVideoPredictionLitModel(batch_size=8)
+ucf101_dm = UCF101VideoDataModule(batch_size=8)
+lit_model = SelfSupervisedVideoPredictionLitModel(datamodule=ucf101_dm)
 
 lit_model, trainer = load_or_train_model(lit_model, "video_prediction")
 

@@ -7,6 +7,7 @@ from project.config.user_config import (
     PREDICTION_OUTPUT_DIR,
     PREDICTION_MODEL_CHECKPOINT,
 )
+from project.dataset.ucf101video import UCF101VideoDataModule
 from project.train_video_prediction import (
     SelfSupervisedVideoPredictionLitModel,
     load_or_train_model,
@@ -79,7 +80,8 @@ class GifGenerator(SelfSupervisedVideoPredictionLitModel):
             )
 
 
-lit_model = GifGenerator(hidden_dims=[64, 64, 128, 256], batch_size=8)
+ucf101_dm = UCF101VideoDataModule(batch_size=8)
+lit_model = GifGenerator(datamodule=ucf101_dm)
 
 lit_model, trainer = load_or_train_model(
     lit_model, tensorboard_graph_name=None, gif_mode=True, save=False
