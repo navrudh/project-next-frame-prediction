@@ -26,10 +26,10 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         self,
         datamodule,
         image_dim: int = 224,
-        lr: float = 0.001,
-        l1_loss_wt: float = 0.3,
-        l2_loss_wt: float = 0.05,
-        ssim_loss_wt: float = 0.65,
+        lr: float = 0.0005,
+        l1_loss_wt: float = 0.25,
+        l2_loss_wt: float = 0.50,
+        ssim_loss_wt: float = 0.25,
     ):
         super().__init__()
         self.datamodule = datamodule
