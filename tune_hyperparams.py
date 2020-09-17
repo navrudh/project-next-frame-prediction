@@ -25,10 +25,13 @@ class TuneReportCallback(Callback):
 
 
 def train_ucf101_tune(config, datamodule, num_epochs=4):
-    total_weight = config["l1_loss_wt"] + config["l2_loss_wt"] + config["ssim_loss_wt"]
-    config["l1_loss_wt"] /= total_weight
-    config["l2_loss_wt"] /= total_weight
-    config["ssim_loss_wt"] /= total_weight
+    if "l1_loss_wt" in config:
+        total_weight = (
+            config["l1_loss_wt"] + config["l2_loss_wt"] + config["ssim_loss_wt"]
+        )
+        config["l1_loss_wt"] /= total_weight
+        config["l2_loss_wt"] /= total_weight
+        config["ssim_loss_wt"] /= total_weight
 
     print("Evaluating Params: ", config)
 
@@ -39,6 +42,7 @@ def train_ucf101_tune(config, datamodule, num_epochs=4):
         gpus=1,
         logger=TensorBoardLogger(save_dir=tune.get_trial_dir(), name="", version="."),
         progress_bar_refresh_rate=0,
+        val_percent_check=0.0,
         limit_train_batches=0.005,
         callbacks=[TuneReportCallback()],
     )
@@ -46,13 +50,13 @@ def train_ucf101_tune(config, datamodule, num_epochs=4):
 
 
 def tune_ucf101_asha(
-        config: dict,
-        num_samples=50,
-        num_epochs=4,
-        gpus_per_trial=1,
-        parameter_columns=None,
-        metric_columns=None,
-        folder_name="tune_ucf101_asha",
+    config: dict,
+    num_samples=50,
+    num_epochs=6,
+    gpus_per_trial=1,
+    parameter_columns=None,
+    metric_columns=None,
+    folder_name="tune_ucf101_asha",
 ):
     ucf101_dm = UCF101VideoDataModule(batch_size=8)
 
@@ -80,14 +84,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Tune Hyperparameters.")
     parser.add_argument(
-        "integers",
-        metavar="N",
-        type=int,
-        nargs="+",
-        help="an integer for the accumulator",
-    )
-    parser.add_argument(
-        "--params", type=str, choices=["loss", "lr"], help="which param to tune?"
+        "--params",
+        type=str,
+        choices=["loss", "lr"],
+        help="which param to tune?",
+        required=True,
     )
 
     args = parser.parse_args()
@@ -99,14 +100,16 @@ if __name__ == "__main__":
                 "l2_loss_wt": tune.uniform(1, 100),
                 "ssim_loss_wt": tune.uniform(1, 100),
             },
-            parameter_columns=("l1_loss_wt", "l2_loss_wt", "ssim_loss_wt"),
-            metric_columns=("loss", "training_iteration"),
-            folder_name="tune_ucf101_losses"
+            parameter_columns=["l1_loss_wt", "l2_loss_wt", "ssim_loss_wt"],
+            metric_columns=["loss", "training_iteration"],
+            folder_name="tune_ucf101_losses",
+            num_samples=50,
         )
     elif args.params == "lr":
         tune_ucf101_asha(
             config={"lr": tune.loguniform(1e-4, 1e-2)},
-            parameter_columns=("lr"),
-            metric_columns=("loss", "training_iteration"),
-            folder_name="tune_ucf101_lr"
+            parameter_columns=["lr"],
+            metric_columns=["loss", "training_iteration"],
+            folder_name="tune_ucf101_lr",
+            num_samples=20,
         )
