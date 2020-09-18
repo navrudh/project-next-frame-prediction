@@ -17,10 +17,11 @@ from project.utils.train import custom_collate
 # Dataset:
 # https://www.crcv.ucf.edu/data/UCF101/UCF101.rar
 class UCF101VideoDataModule(LightningDataModule):
-    def __init__(self, batch_size=1, image_dim=224):
+    def __init__(self, batch_size=1, image_dim=224, fold=1):
         super().__init__()
         self.batch_size = batch_size
         self.image_dim = image_dim
+        self.fold = fold
 
         def order_video_image_dimensions(x):
             return x.permute(0, 3, 1, 2)
@@ -61,11 +62,12 @@ class UCF101VideoDataModule(LightningDataModule):
             self.train_dataset = datasets.UCF101(
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
-                frames_per_clip=6,
-                step_between_clips=12,
+                frames_per_clip=12,
+                step_between_clips=100,
                 num_workers=UCF101_WORKERS,
                 train=True,
                 transform=self.train_transforms,
+                fold=self.fold,
             )
 
         if stage == "test" or stage is None:
@@ -73,10 +75,11 @@ class UCF101VideoDataModule(LightningDataModule):
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
                 frames_per_clip=6,
-                step_between_clips=12,
+                step_between_clips=100,
                 num_workers=UCF101_WORKERS,
                 train=False,
                 transform=self.test_transforms,
+                fold=self.fold,
             )
 
         # # train/val split
@@ -94,6 +97,17 @@ class UCF101VideoDataModule(LightningDataModule):
             num_workers=DATALOADER_WORKERS,
             collate_fn=custom_collate,
             shuffle=True,
+            # pin_memory=True,
+        )
+
+    def val_dataloader(self):
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            num_workers=DATALOADER_WORKERS,
+            collate_fn=custom_collate,
+            shuffle=True,
+            # pin_memory=True,
         )
 
     def test_dataloader(self):
@@ -103,4 +117,5 @@ class UCF101VideoDataModule(LightningDataModule):
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
             collate_fn=custom_collate,
+            shuffle=True,
         )
