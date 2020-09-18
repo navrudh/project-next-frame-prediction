@@ -165,7 +165,7 @@ def load_or_train_model(
             gpus=1,
             deterministic=True,
             max_epochs=PREDICTION_MAX_EPOCHS,
-            limit_train_batches=0.001,
+            # limit_train_batches=0.001,
             limit_val_batches=0.1,
             # val_check_interval=0.5,
         )

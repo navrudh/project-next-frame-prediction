@@ -9,11 +9,11 @@
     "workers": 11
   },
   "prediction": {
-    "model": "/home/user/ganesh/models/vision-classification/vp-trainer.ckpt",
-    "outdir": "/home/user/ganesh/models/vision-classification/out",
-    "epochs": 4
+    "model": "/home/user/ganesh/models/vision-classification/prediction-finetune.ckpt",
+    "outdir": "/home/user/ganesh/models/vision-classification/prediction-finetune/generated",
+    "epochs": 10
   },
   "classification": {
-    "root": "/home/user/ganesh/datasets/vision-classification/tensors"
+    "root": "/home/user/ganesh/datasets/vision-classification/prediction-finetune/tensors"
   }
 }

@@ -9,11 +9,11 @@
     "workers": 7
   },
   "prediction": {
-    "model": "/media/navrudh/Data/models/vision-classification/vp-trainer.ckpt",
+    "model": "/media/navrudh/Data/models/vision-classification/prediction-finetune.ckpt",
     "outdir": "/media/navrudh/Data/models/vision-classification/out",
     "epochs": 4
   },
   "classification": {
-    "root": "/media/navrudh/Data/ML/dataset/vision-classification/tensors"
+    "root": "/media/navrudh/Data/ML/dataset/vision-classification/prediction-finetune/tensors"
   }
 }
