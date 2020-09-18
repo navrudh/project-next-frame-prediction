@@ -9,7 +9,7 @@
     "workers": 11
   },
   "prediction": {
-    "model": "/home/user/ganesh/models/vision-classification/prediction-finetune.ckpt",
+    "model": "/home/user/ganesh/models/vision-classification/models/prediction-finetune.ckpt",
     "outdir": "/home/user/ganesh/models/vision-classification/prediction-finetune/generated",
     "epochs": 10
   },
