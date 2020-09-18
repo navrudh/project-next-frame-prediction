@@ -38,19 +38,6 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         self.lateral_inputs = {}
         self._register_hooks()
 
-    def parameters(self, recurse: bool = True):
-        return (
-            list(self.latent_block_0.parameters())
-            + list(self.latent_block_1.parameters())
-            + list(self.latent_block_2.parameters())
-            + list(self.latent_block_3.parameters())
-            + list(self.decoder_block_1.parameters())
-            + list(self.decoder_block_2.parameters())
-            + list(self.decoder_block_3.parameters())
-            + list(self.decoder_block_4.parameters())
-            + list(self.decoder_block_5.parameters())
-        )
-
     def forward(self, x, test=False, pooling_out_size=(1, 1)):
         self.encoder(x)
         lb0 = self.latent_block_0.forward(
@@ -122,6 +109,14 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
 
     def get_module_output(self, name):
         def hook(model, input, output):
-            self.lateral_inputs[name] = output.detach_()
+            self.lateral_inputs[name] = output
 
         return hook
+
+    def freeze_encoder(self):
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+
+    def unfreeze_encoder(self):
+        for param in self.encoder.parameters():
+            param.requires_grad = True

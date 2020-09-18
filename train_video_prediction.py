@@ -26,10 +26,11 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         self,
         datamodule,
         image_dim: int = 224,
-        lr: float = 0.0005,
-        l1_loss_wt: float = 0.25,
+        lr: float = 0.0015,
+        l1_loss_wt: float = 0.35,
         l2_loss_wt: float = 0.50,
-        ssim_loss_wt: float = 0.25,
+        ssim_loss_wt: float = 0.15,
+        freeze_epochs=3,
     ):
         super().__init__()
         self.datamodule = datamodule
@@ -38,12 +39,14 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         self.l2_loss_wt = l2_loss_wt
         self.ssim_loss_wt = ssim_loss_wt
         self.image_dim = image_dim
+        self.freeze_epochs = freeze_epochs
 
         self.save_hyperparameters()
 
         self.model = SelfSupervisedVideoPredictionModel(
             latent_block_dims=[self.image_dim // v for v in (2, 4, 8, 16)],
         )
+        self.model.freeze_encoder()
 
         self.classes = datamodule.classes
         self.class_to_idx = datamodule.class_to_idx
@@ -72,6 +75,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def training_step(self, batch, batch_nb):
         x, y = batch
+        x = x[:, :6, :, :, :]
         # pick 5 frames, first 3 are seeds, then predict next 3
         curr = x[:, :5, :, :, :]
         # curr = F.pad(curr, [0] * 7 + [5 - curr.shape[1]], "constant", 0)
@@ -84,6 +88,30 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         loss = self.criterion(pred, next)
         tensorboard_logs = {"train_loss": loss}
         return {"loss": loss, "log": tensorboard_logs}
+
+    def validation_step(self, batch, batch_nb):
+        x, y = batch
+        x = x[:, :6, :, :, :]
+        # pick 5 frames, first 3 are seeds, then predict next 3
+        curr = x[:, :5, :, :, :]
+        # curr = F.pad(curr, [0] * 7 + [5 - curr.shape[1]], "constant", 0)
+        curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
+        pred = self(curr)
+        next = x[:, -3:, :, :, :]
+        # next = F.pad(next, [0] * 7 + [5 - next.shape[1]], "constant", 0)
+        next = next.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
+        next = F.max_pool2d(next, 2)
+        loss = self.criterion(pred, next)
+        return {"val_loss": loss}
+
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
+        tensorboard_logs = {"val_loss": avg_loss}
+        return {"avg_val_loss": avg_loss, "log": tensorboard_logs}
+
+    def on_epoch_start(self):
+        if self.current_epoch == self.freeze_epochs:
+            self.model.unfreeze_encoder()
 
 
 checkpoint_callback = ModelCheckpoint(
@@ -100,8 +128,20 @@ def load_or_train_model(
     tensorboard_graph_name: str = None,
     save=True,
     gif_mode=False,
+    profiler=None,
 ):
     logger = False
+    if profiler:
+        trainer = Trainer(
+            logger=logger,
+            profiler=profiler,
+            gpus=1,
+            max_steps=150,
+            limit_val_batches=0.1,
+        )
+        trainer.fit(lit_model)
+        return lit_model, trainer
+
     if tensorboard_graph_name:
         logger = TensorBoardLogger("lightning_logs", name=tensorboard_graph_name)
     # profiler = AdvancedProfiler()
@@ -119,27 +159,25 @@ def load_or_train_model(
     if gif_mode:
         kwargs.update(get_kwargs(limit_test_batches=0.001, limit_train_batches=0.001))
 
-    if os.path.exists(PREDICTION_MODEL_CHECKPOINT):
-        trainer = Trainer(
-            resume_from_checkpoint=PREDICTION_MODEL_CHECKPOINT,
-            val_check_interval=0.5,
+    kwargs.update(
+        get_kwargs(
             logger=logger,
             gpus=1,
             deterministic=True,
             max_epochs=PREDICTION_MAX_EPOCHS,
-            # limit_train_batches=0.001,
-            **kwargs,
+            limit_train_batches=0.001,
+            limit_val_batches=0.1,
+            # val_check_interval=0.5,
         )
+    )
+
+    if os.path.exists(PREDICTION_MODEL_CHECKPOINT):
+        trainer = Trainer(resume_from_checkpoint=PREDICTION_MODEL_CHECKPOINT, **kwargs)
     else:
         trainer = Trainer(
             # precision=16, # 2x speedup but NAN loss after 500 steps
             # profiler=profiler,
             # max_steps=100,  # for profiler
-            val_check_interval=0.5,
-            logger=logger,
-            gpus=1,
-            deterministic=True,
-            max_epochs=PREDICTION_MAX_EPOCHS,
             **kwargs,
         )
     trainer.fit(lit_model)
@@ -147,7 +185,11 @@ def load_or_train_model(
 
 
 if __name__ == "__main__":
-    ucf101_dm = UCF101VideoDataModule(batch_size=8)
+    ucf101_dm = UCF101VideoDataModule(batch_size=4)
+    # for validation dataloader
+    ucf101_dm.setup("test")
     lit_model = SelfSupervisedVideoPredictionLitModel(datamodule=ucf101_dm)
-    lit_model, trainer = load_or_train_model(lit_model, "video_prediction")
+    lit_model, trainer = load_or_train_model(
+        lit_model, tensorboard_graph_name="video_prediction",
+    )
     print("Completed Video Prediction Training")
