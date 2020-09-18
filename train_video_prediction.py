@@ -70,7 +70,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         optimizer = torch.optim.Adam(
             self.model.parameters(), lr=self.lr, weight_decay=1e-5
         )
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.5)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.5)
         return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_nb):
