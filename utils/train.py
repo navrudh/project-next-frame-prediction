@@ -10,4 +10,4 @@ def custom_collate(batch):
     return torch.utils.data.dataloader.default_collate(filtered_batch)
 
 
-double_resolution = Upsample(scale_factor=2, mode="bilinear")
+double_resolution = Upsample(scale_factor=2, mode="bilinear", align_corners=True)

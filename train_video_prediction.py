@@ -3,6 +3,7 @@ import os
 import pytorch_lightning.metrics.functional as PL_F
 import torch
 import torch.nn.functional as F
+import torchvision
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -16,6 +17,7 @@ from project.dataset.ucf101video import UCF101VideoDataModule
 from project.model.model import SelfSupervisedVideoPredictionModel
 from project.utils.function import get_kwargs
 from project.utils.info import print_device, seed
+from project.utils.train import double_resolution
 
 print_device()
 seed(42)
@@ -27,9 +29,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         datamodule,
         image_dim: int = 224,
         lr: float = 0.0015,
-        l1_loss_wt: float = 0.35,
-        l2_loss_wt: float = 0.50,
-        ssim_loss_wt: float = 0.15,
+        l1_loss_wt: float = 1,
+        l2_loss_wt: float = 1,
+        ssim_loss_wt: float = 1,
         freeze_epochs=3,
     ):
         super().__init__()
@@ -56,14 +58,10 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         l1_loss = F.l1_loss(t1, t2)
         l2_loss = F.mse_loss(t1, t2)
 
-        return (
-            self.ssim_loss_wt * ssim_loss
-            + self.l1_loss_wt * l1_loss
-            + self.l2_loss_wt * l2_loss
-        )
+        return ssim_loss + l1_loss + l2_loss
 
-    def forward(self, x):
-        x = self.model(x)
+    def forward(self, x, seq_len):
+        x = self.model.forward(x, seq_len=seq_len)
         return x
 
     def configure_optimizers(self):
@@ -75,35 +73,72 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         )
         return [optimizer], [scheduler]
 
-    def training_step(self, batch, batch_nb):
+    def predict_frame(self, batch, batch_nb):
         x, y = batch
         x = x[:, :6, :, :, :]
         # pick 5 frames, first 3 are seeds, then predict next 3
-        curr = x[:, :5, :, :, :]
+        seed_frames = x[:, :3, :, :, :]
+        curr = seed_frames
+        b, t, c, w, h = curr.shape
+        num_new_frames = 2
+        for i in range(num_new_frames):
+            seq_len = t + i
+            curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
+            # print("C0", curr.shape)
+            pred = self.forward(curr, seq_len)
+            # print("P", pred.shape)
+            # print("seq", seq_len)
+            pred_frame_only = double_resolution(pred[seq_len - 1 :: seq_len, :, :, :])
+
+            # print("PFO", pred_frame_only.shape)
+            curr = torch.cat(
+                [
+                    curr.view(b, seq_len, c, w, h),
+                    pred_frame_only.reshape(b, 1, c, w, h),
+                ],
+                dim=1,
+            ).detach_()
+            # print("C1", curr.shape)
+        # print("CR", curr.shape)
+        curr = curr.reshape(-1, 3, self.image_dim, self.image_dim)
+        # print("CR", curr.shape)
+        pred = self.forward(curr, seq_len=5)
+        # print("PR", pred.shape)
+        pred = pred.view(-1, 5, *pred.shape[-3:])
+        # print("PR", pred.shape)
+        pred = pred[:, -3:, :, :, :].reshape(-1, *pred.shape[-3:]).contiguous()
+        # print("PR", pred.shape)
+
         # curr = F.pad(curr, [0] * 7 + [5 - curr.shape[1]], "constant", 0)
-        curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
-        pred = self(curr)
+        # curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
+        # pred = self(curr)
         next = x[:, -3:, :, :, :]
         # next = F.pad(next, [0] * 7 + [5 - next.shape[1]], "constant", 0)
         next = next.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
         next = F.max_pool2d(next, 2)
         loss = self.criterion(pred, next)
+
+        return curr, next, pred, loss
+
+    def training_step(self, batch, batch_nb):
+        curr, next, pred, loss = self.predict_frame(batch, batch_nb)
+
+        if batch_nb % 100:
+            self.logger.experiment.add_image(
+                "curr", torchvision.utils.make_grid(curr[0]), self.global_step
+            )
+            self.logger.experiment.add_image(
+                "next", torchvision.utils.make_grid(next[0]), self.global_step
+            )
+            self.logger.experiment.add_image(
+                "pred", torchvision.utils.make_grid(pred[0]), self.global_step
+            )
+
         tensorboard_logs = {"train_loss": loss}
         return {"loss": loss, "log": tensorboard_logs}
 
     def validation_step(self, batch, batch_nb):
-        x, y = batch
-        x = x[:, :6, :, :, :]
-        # pick 5 frames, first 3 are seeds, then predict next 3
-        curr = x[:, :5, :, :, :]
-        # curr = F.pad(curr, [0] * 7 + [5 - curr.shape[1]], "constant", 0)
-        curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
-        pred = self(curr)
-        next = x[:, -3:, :, :, :]
-        # next = F.pad(next, [0] * 7 + [5 - next.shape[1]], "constant", 0)
-        next = next.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
-        next = F.max_pool2d(next, 2)
-        loss = self.criterion(pred, next)
+        curr, next, pred, loss = self.predict_frame(batch, batch_nb)
         return {"val_loss": loss}
 
     def validation_epoch_end(self, outputs):
@@ -129,6 +164,8 @@ def load_or_train_model(
     lit_model: SelfSupervisedVideoPredictionLitModel,
     tensorboard_graph_name: str = None,
     save=True,
+    resume=True,
+    validation=True,
     gif_mode=False,
     profiler=None,
 ):
@@ -149,6 +186,19 @@ def load_or_train_model(
     # profiler = AdvancedProfiler()
 
     kwargs = {}
+
+    kwargs.update(
+        get_kwargs(
+            logger=logger,
+            gpus=1,
+            deterministic=True,
+            max_epochs=PREDICTION_MAX_EPOCHS,
+            # limit_train_batches=0.001,
+            # limit_val_batches=0.1,
+            # val_check_interval=0.5,
+        )
+    )
+
     if save:
         kwargs.update(
             get_kwargs(
@@ -161,19 +211,14 @@ def load_or_train_model(
     if gif_mode:
         kwargs.update(get_kwargs(limit_test_batches=0.001, limit_train_batches=0.001))
 
-    kwargs.update(
-        get_kwargs(
-            logger=logger,
-            gpus=1,
-            deterministic=True,
-            max_epochs=PREDICTION_MAX_EPOCHS,
-            # limit_train_batches=0.001,
-            limit_val_batches=0.1,
-            # val_check_interval=0.5,
+    if not validation:
+        kwargs.update(
+            get_kwargs(
+                limit_val_batches=0.0, val_check_interval=0.0, num_sanity_val_steps=0
+            )
         )
-    )
 
-    if os.path.exists(PREDICTION_MODEL_CHECKPOINT):
+    if resume and os.path.exists(PREDICTION_MODEL_CHECKPOINT):
         trainer = Trainer(resume_from_checkpoint=PREDICTION_MODEL_CHECKPOINT, **kwargs)
     else:
         trainer = Trainer(
@@ -192,6 +237,10 @@ if __name__ == "__main__":
     ucf101_dm.setup("test")
     lit_model = SelfSupervisedVideoPredictionLitModel(datamodule=ucf101_dm)
     lit_model, trainer = load_or_train_model(
-        lit_model, tensorboard_graph_name="video_prediction",
+        lit_model,
+        tensorboard_graph_name="test-vp",
+        resume=True,
+        save=True,
+        # validation=False,
     )
     print("Completed Video Prediction Training")

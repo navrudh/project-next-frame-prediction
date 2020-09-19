@@ -4,16 +4,16 @@
   },
   "ucf101": {
     "root": "/home/user/ganesh/datasets/UCF101/UCF-101",
-    "anno": "/home/user/ganesh/datasets/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
+    "anno": "/home/user/ganesh/datasets/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist-Small",
     "cache": "/home/user/ganesh/datasets/UCF101-Frames",
     "workers": 12
   },
   "prediction": {
-    "model": "/home/user/ganesh/models/vision-classification/prediction-finetune/model.ckpt",
-    "outdir": "/home/user/ganesh/models/vision-classification/prediction-finetune/generated",
-    "epochs": 7
+    "model": "/home/user/ganesh/models/vision-classification/prediction-3-recursive-small/model.ckpt",
+    "outdir": "/home/user/ganesh/models/vision-classification/prediction-3-recursive-small/generated",
+    "epochs": 20
   },
   "classification": {
-    "root": "/home/user/ganesh/datasets/vision-classification/prediction-finetune/classification/tensors"
+    "root": "/home/user/ganesh/datasets/vision-classification/prediction-3-recursive-small/classification/tensors"
   }
 }

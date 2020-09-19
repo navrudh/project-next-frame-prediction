@@ -46,11 +46,11 @@ class LatentBlock(nn.Module):
             kernel_size=(7, 7),
         )
 
-    def forward(self, x, test=False):
+    def forward(self, x, seq_len=5, test=False):
         # print("LAT-BLK", x.shape)
         x0 = self.conv1x1(x)
 
-        _x = x.view(-1, 5, *x.shape[-3:])
+        _x = x.view(-1, seq_len, *x.shape[-3:])
         x1, hidden_state_1 = self.convgru1.forward(_x)
         x2, hidden_state_2 = self.convgru2.forward(_x)
         x3, hidden_state_3 = self.convgru3.forward(_x)

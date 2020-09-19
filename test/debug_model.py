@@ -9,28 +9,27 @@ device = torch_device("cuda:0" if torch_cuda.is_available() else "cpu")
 IMG_DIM = 224
 block_inp_dims = [IMG_DIM // v for v in (2, 4, 8, 16)]
 
-model = SelfSupervisedVideoPredictionModel(
-    hidden_dims=[64, 64, 128, 256], latent_block_dims=block_inp_dims
-)
+model = SelfSupervisedVideoPredictionModel(latent_block_dims=block_inp_dims)
 model = model.cuda()
 
 inp = torch.randn((1, 5, 3, IMG_DIM, IMG_DIM)).to(device)
 _inp = inp.view(-1, 3, IMG_DIM, IMG_DIM)
 
 ## TRAIN
-x = model(_inp)
+seq_len = 5
+pred = model.forward(_inp, seq_len=seq_len)
 print(
     "TRAIN pred:",
-    x.shape,
+    pred.shape,
     ", expected:",
-    [inp.shape[0] * 3, 3, IMG_DIM // 2, IMG_DIM // 2],
+    [inp.shape[0] * seq_len, 3, IMG_DIM // 2, IMG_DIM // 2],
 )
 loss = SSIM(data_range=1.0)
 l = loss(
     torch.nn.functional.interpolate(
-        inp[:, -3:, :, :, :].reshape(-1, 3, 224, 224), size=(112, 112)
+        inp[:, -1:, :, :, :].reshape(-1, 3, 224, 224), size=(112, 112)
     ),
-    x,
+    pred[seq_len - 1 :: seq_len, :, :, :],
 )
 print(l)
 # exit()

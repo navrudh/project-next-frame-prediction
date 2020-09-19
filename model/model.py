@@ -38,19 +38,27 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         self.lateral_inputs = {}
         self._register_hooks()
 
-    def forward(self, x, test=False, pooling_out_size=(1, 1)):
+    def forward(self, x, seq_len=5, test=False, pooling_out_size=(1, 1)):
         self.encoder(x)
         lb0 = self.latent_block_0.forward(
-            self.lateral_inputs[self.enc2lateral_hook_layers[0]], test=test
+            self.lateral_inputs[self.enc2lateral_hook_layers[0]],
+            seq_len=seq_len,
+            test=test,
         )
         lb1 = self.latent_block_1.forward(
-            self.lateral_inputs[self.enc2lateral_hook_layers[1]], test=test
+            self.lateral_inputs[self.enc2lateral_hook_layers[1]],
+            seq_len=seq_len,
+            test=test,
         )
         lb2 = self.latent_block_2.forward(
-            self.lateral_inputs[self.enc2lateral_hook_layers[2]], test=test
+            self.lateral_inputs[self.enc2lateral_hook_layers[2]],
+            seq_len=seq_len,
+            test=test,
         )
         lb3 = self.latent_block_3.forward(
-            self.lateral_inputs[self.enc2lateral_hook_layers[3]], test=test
+            self.lateral_inputs[self.enc2lateral_hook_layers[3]],
+            seq_len=seq_len,
+            test=test,
         )
 
         if test:
@@ -65,26 +73,36 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
             )
 
         lb0 = tuple(
-            it.view(-1, 5, *it.shape[-3:])[:, -3:, :, :, :].reshape(-1, *it.shape[-3:])
+            it.view(-1, seq_len, *it.shape[-3:])[:, -seq_len:, :, :, :].reshape(
+                -1, *it.shape[-3:]
+            )
             for it in lb0
         )
         lb1 = tuple(
-            it.view(-1, 5, *it.shape[-3:])[:, -3:, :, :, :].reshape(-1, *it.shape[-3:])
+            it.view(-1, seq_len, *it.shape[-3:])[:, -seq_len:, :, :, :].reshape(
+                -1, *it.shape[-3:]
+            )
             for it in lb1
         )
         lb2 = tuple(
-            it.view(-1, 5, *it.shape[-3:])[:, -3:, :, :, :].reshape(-1, *it.shape[-3:])
+            it.view(-1, seq_len, *it.shape[-3:])[:, -seq_len:, :, :, :].reshape(
+                -1, *it.shape[-3:]
+            )
             for it in lb2
         )
         lb3 = tuple(
-            it.view(-1, 5, *it.shape[-3:])[:, -3:, :, :, :].reshape(-1, *it.shape[-3:])
+            it.view(-1, seq_len, *it.shape[-3:])[:, -seq_len:, :, :, :].reshape(
+                -1, *it.shape[-3:]
+            )
             for it in lb3
         )
 
         x = self.lateral_inputs[self.enc2lateral_hook_layers[4]]
         # print("DEC-BLK-1", x.shape)
         x = self.decoder_block_1(x)
-        x = x.view(-1, 5, *x.shape[-3:])[:, -3:, :, :, :].reshape(-1, *x.shape[-3:])
+        x = x.view(-1, seq_len, *x.shape[-3:])[:, -seq_len:, :, :, :].reshape(
+            -1, *x.shape[-3:]
+        )
         # print("DEC-BLK-2: CAT ", x.shape, [it.shape for it in lb3])
         x = torch.cat(lb3 + (x,), dim=1)
         x = self.decoder_block_2(x)
