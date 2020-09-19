@@ -1,19 +1,19 @@
 {
   "dataloader": {
-    "workers": 7
+    "workers": 12
   },
   "ucf101": {
     "root": "/home/user/ganesh/datasets/UCF101/UCF-101",
     "anno": "/home/user/ganesh/datasets/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
     "cache": "/home/user/ganesh/datasets/UCF101-Frames",
-    "workers": 11
+    "workers": 12
   },
   "prediction": {
-    "model": "/home/user/ganesh/models/vision-classification/models/prediction-finetune.ckpt",
+    "model": "/home/user/ganesh/models/vision-classification/prediction-finetune/model.ckpt",
     "outdir": "/home/user/ganesh/models/vision-classification/prediction-finetune/generated",
-    "epochs": 10
+    "epochs": 7
   },
   "classification": {
-    "root": "/home/user/ganesh/datasets/vision-classification/prediction-finetune/tensors"
+    "root": "/home/user/ganesh/datasets/vision-classification/prediction-finetune/classification/tensors"
   }
 }

@@ -7,7 +7,7 @@ from project.config.user_config import (
     PREDICTION_OUTPUT_DIR,
     PREDICTION_MODEL_CHECKPOINT,
 )
-from project.dataset.ucf101video import UCF101VideoDataModule
+from project.dataset.ucf101video import UCF101VideoDataModule, invert_transforms
 from project.train_video_prediction import (
     SelfSupervisedVideoPredictionLitModel,
     load_or_train_model,
@@ -61,6 +61,7 @@ class GifGenerator(SelfSupervisedVideoPredictionLitModel):
         sequence[:, 3, :, :, :] = pred4[:, 0, :, :, :]
         sequence[:, 4, :, :, :] = pred5[:, 1, :, :, :]
         sequence[:, 5, :, :, :] = pred6[:, 2, :, :, :]
+        sequence = invert_transforms(sequence)
 
         dim = sequence.shape[0]
         batch_tensors = torch.unbind(sequence)

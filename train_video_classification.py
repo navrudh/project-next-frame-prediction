@@ -19,7 +19,7 @@ class VideoClassificationModel(LightningModule):
     def __init__(self, batch_size=32, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
-        self.model = nn.Sequential(nn.Linear(768, 101))
+        self.model = nn.Sequential(nn.Linear(768, 1024), nn.Linear(1024, 101))
         self.loss = nn.NLLLoss()
 
     def forward(self, x):
@@ -111,6 +111,6 @@ def train_model(
 
 
 lit_model = VideoClassificationModel(batch_size=256)
-lit_model, trainer = train_model(lit_model, "video_classification")
+lit_model, trainer = train_model(lit_model, "ft-classification")
 
 print("Finished Classification")

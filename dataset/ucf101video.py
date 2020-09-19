@@ -14,6 +14,32 @@ from project.config.user_config import (
 from project.utils.train import custom_collate
 
 
+def order_video_image_dimensions(x):
+    return x.permute(0, 3, 1, 2)
+
+
+def normalize_video_images(x):
+    for img in x:
+        TV_F.normalize(
+            img, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], inplace=True,
+        )
+    return x
+
+
+def unnormalize_video_images(x):
+    for img in x:
+        TV_F.normalize(
+            img,
+            mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
+            std=[1 / 0.229, 1 / 0.224, 1 / 0.225],
+            inplace=True,
+        )
+    return x
+
+
+invert_transforms = transforms.Compose([transforms.Lambda(unnormalize_video_images)])
+
+
 # Dataset:
 # https://www.crcv.ucf.edu/data/UCF101/UCF101.rar
 class UCF101VideoDataModule(LightningDataModule):
@@ -22,19 +48,6 @@ class UCF101VideoDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.image_dim = image_dim
         self.fold = fold
-
-        def order_video_image_dimensions(x):
-            return x.permute(0, 3, 1, 2)
-
-        def normalize_video_images(x):
-            for img in x:
-                TV_F.normalize(
-                    img,
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225],
-                    inplace=True,
-                )
-            return x
 
         self.train_transforms = self.test_transforms = transforms.Compose(
             [
@@ -91,6 +104,7 @@ class UCF101VideoDataModule(LightningDataModule):
         # self.test_dataset = mnist_test
 
     def train_dataloader(self):
+        print("Train Dataloader Called")
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -101,6 +115,7 @@ class UCF101VideoDataModule(LightningDataModule):
         )
 
     def val_dataloader(self):
+        print("Val Dataloader Called")
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
@@ -111,6 +126,7 @@ class UCF101VideoDataModule(LightningDataModule):
         )
 
     def test_dataloader(self):
+        print("Test Dataloader Called")
         # shuffling because we want the first few random gifs generated
         return DataLoader(
             self.test_dataset,
