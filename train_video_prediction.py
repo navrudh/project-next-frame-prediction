@@ -116,6 +116,8 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
                 transforms.Lambda(order_video_image_dimensions),
                 # normalize
                 transforms.Lambda(normalize_video_images),
+                # rescale to the most common size
+                transforms.Lambda(lambda x: F.interpolate(x, (224, 224))),
                 # for half precision training
                 # transforms.Lambda(lambda x: x.half()),
             ]
@@ -153,7 +155,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def predict_frame(self, batch, batch_nb):
         x, y = batch
-        x = x[:, :6, :, :, :]
+        # x = x[:, :6, :, :, :]
         # pick 5 frames, first 3 are seeds, then predict next 3
         seed_frames = x[:, :3, :, :, :]
         curr = seed_frames
@@ -229,7 +231,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             step_between_clips=100,
             num_workers=UCF101_WORKERS,
             train=False,
-            transform=self.train_transforms,
+            transform=self.test_transforms,
             fold=self.fold,
         )
         loader = DataLoader(
@@ -366,7 +368,7 @@ if __name__ == "__main__":
     lit_model = SelfSupervisedVideoPredictionLitModel(batch_size=4)
     lit_model, trainer = load_or_train_model(
         lit_model,
-        tensorboard_graph_name="prediction-3-recursive-small-p",
+        tensorboard_graph_name="prediction-3-augment-small",
         # resume=False,
         # save=False,
         # validation=False,

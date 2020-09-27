@@ -73,6 +73,7 @@ _image_transforms = torchvision.transforms.Compose(
     [
         torchvision.transforms.RandomHorizontalFlip(0.5),
         torchvision.transforms.RandomVerticalFlip(0.1),
+        torchvision.transforms.ToPILImage(),
         torchvision.transforms.ColorJitter(
             brightness=0.25, contrast=0.25, saturation=0.25, hue=0.25
         ),
@@ -102,4 +103,4 @@ def seed_and_call(seed, func, *args, **kwargs):
 def random_augment_video_frames(x):
     seed = random.randint(0, 1000000)
 
-    return [seed_and_call(seed, _image_transforms, img) for img in x]
+    return torch.stack([seed_and_call(seed, _image_transforms, img) for img in x])
