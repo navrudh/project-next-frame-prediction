@@ -25,7 +25,11 @@ from project.config.user_config import (
 )
 from project.config.user_config import UCF101_ROOT_PATH
 from project.model.model import SelfSupervisedVideoPredictionModel
-from project.transforms.video import random_augment_video_frames, RandomFrameRate, RestrictFrameRate
+from project.transforms.video import (
+    random_augment_video_frames,
+    RandomFrameRate,
+    RestrictFrameRate,
+)
 from project.utils.function import get_kwargs
 from project.utils.train import custom_collate
 from project.utils.train import double_resolution
@@ -56,14 +60,14 @@ def unnormalize_video_images(x):
 
 class SelfSupervisedVideoPredictionLitModel(LightningModule):
     def __init__(
-            self,
-            batch_size,
-            image_dim: int = 224,
-            lr: float = 0.0015,
-            l1_loss_wt: float = 0.30,
-            l2_loss_wt: float = 0.45,
-            ssim_loss_wt: float = 0.25,
-            freeze_epochs=3,
+        self,
+        batch_size,
+        image_dim: int = 224,
+        lr: float = 0.0015,
+        l1_loss_wt: float = 0.30,
+        l2_loss_wt: float = 0.45,
+        ssim_loss_wt: float = 0.25,
+        freeze_epochs=3,
     ):
         super().__init__()
         # self.datamodule = datamodule
@@ -129,9 +133,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         l2_loss = F.mse_loss(t1, t2)
 
         return (
-                self.ssim_loss_wt * ssim_loss
-                + self.l1_loss_wt * l1_loss
-                + self.l2_loss_wt * l2_loss
+            self.ssim_loss_wt * ssim_loss
+            + self.l1_loss_wt * l1_loss
+            + self.l2_loss_wt * l2_loss
         )
 
     def forward(self, x, seq_len):
@@ -162,7 +166,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             pred = self.forward(curr, seq_len)
             # print("P", pred.shape)
             # print("seq", seq_len)
-            pred_frame_only = double_resolution(pred[seq_len - 1:: seq_len, :, :, :])
+            pred_frame_only = double_resolution(pred[seq_len - 1 :: seq_len, :, :, :])
 
             # print("PFO", pred_frame_only.shape)
             curr = torch.cat(
@@ -285,13 +289,13 @@ checkpoint_callback = ModelCheckpoint(
 
 
 def load_or_train_model(
-        lit_model: SelfSupervisedVideoPredictionLitModel,
-        tensorboard_graph_name: str = None,
-        save=True,
-        resume=True,
-        validation=True,
-        gif_mode=False,
-        profiler=None,
+    lit_model: SelfSupervisedVideoPredictionLitModel,
+    tensorboard_graph_name: str = None,
+    save=True,
+    resume=True,
+    validation=True,
+    gif_mode=False,
+    profiler=None,
 ):
     logger = False
     if profiler:

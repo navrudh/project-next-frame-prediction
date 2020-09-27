@@ -42,6 +42,7 @@ class RandomFrameRate(torch.nn.Module):
     def __repr__(self):
         return self.__class__.__name__ + "(p={})".format(self.p)
 
+
 class RestrictFrameRate(torch.nn.Module):
     """Adjust video framerate
 
@@ -62,7 +63,7 @@ class RestrictFrameRate(torch.nn.Module):
             Tensor or List of Tensors: selected frames.
         """
 
-        return x[:self.out_len]
+        return x[: self.out_len]
 
     def __repr__(self):
         return self.__class__.__name__ + "(p={})".format(self.p)
