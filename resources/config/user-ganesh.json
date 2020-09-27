@@ -9,11 +9,11 @@
     "workers": 12
   },
   "prediction": {
-    "model": "/home/user/ganesh/models/vision-classification/prediction-3-recursive-small/model.ckpt",
-    "outdir": "/home/user/ganesh/models/vision-classification/prediction-3-recursive-small/generated",
+    "model": "/home/user/ganesh/models/vision-classification/prediction-3-augment-small/model.ckpt",
+    "outdir": "/home/user/ganesh/models/vision-classification/prediction-3-augment-small/generated",
     "epochs": 20
   },
   "classification": {
-    "root": "/home/user/ganesh/datasets/vision-classification/prediction-3-recursive-small/classification/tensors"
+    "root": "/home/user/ganesh/datasets/vision-classification/prediction-3-augment-small/classification/tensors"
   }
 }
