@@ -2,19 +2,14 @@ import uuid
 
 import torch
 import torchvision
+from pytorch_lightning import Trainer
 
-from project.config.user_config import (
-    PREDICTION_MODEL_CHECKPOINT,
-    PREDICTION_OUTPUT_DIR,
-)
+from project.config.user_config import PREDICTION_OUTPUT_DIR
 from project.dataset.ucf101video import UCF101VideoDataModule
-from project.train_video_prediction import (
-    SelfSupervisedVideoPredictionLitModel,
-    load_or_train_model,
-)
+from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
 from project.utils.image import generate_gif
 from project.utils.info import print_device, seed
-from project.utils.train import double_resolution
+from project.utils.train import double_resolution, load_model
 
 print_device()
 seed(42)
@@ -51,7 +46,9 @@ class GifGenerator(SelfSupervisedVideoPredictionLitModel):
             file_name = uuid.uuid1()
             for seq_no, image_tensor in enumerate(batch_tensors[i]):
                 torchvision.utils.save_image(
-                    image_tensor, fp=f"{PREDICTION_OUTPUT_DIR}/{file_name}-{seq_no}.jpg"
+                    image_tensor,
+                    fp=f"{PREDICTION_OUTPUT_DIR}/{file_name}-{seq_no}.jpg",
+                    normalize=True,
                 )
             generate_gif(
                 PREDICTION_OUTPUT_DIR,
@@ -62,13 +59,14 @@ class GifGenerator(SelfSupervisedVideoPredictionLitModel):
 
 if __name__ == "__main__":
     ucf101_dm = UCF101VideoDataModule(batch_size=8)
-    lit_model = GifGenerator(ucf101_dm)
+    lit_model = load_model(GifGenerator, batch_size=8)
+    lit_model.eval()
+    ucf101_dm.setup("test")
 
-    lit_model, trainer = load_or_train_model(
-        lit_model, tensorboard_graph_name=None, gif_mode=True, save=False
-    )
+    trainer = Trainer(logger=False, gpus=1, limit_test_batches=0.1)
+    trainer.test(lit_model, test_dataloaders=ucf101_dm.test_dataloader())
 
-    trainer.test(
-        ckpt_path=PREDICTION_MODEL_CHECKPOINT,
-        test_dataloaders=lit_model.test_dataloader(),
-    )
+    # trainer.test(
+    #     ckpt_path=PREDICTION_MODEL_CHECKPOINT,
+    #     test_dataloaders=ucf101_dm.test_dataloader(),
+    # )

@@ -1,18 +1,15 @@
 import os
 import shutil
-import sys
 import uuid
 
 import torch
 from pytorch_lightning import Trainer
 
-from project.config.user_config import (
-    PREDICTION_MODEL_CHECKPOINT,
-    CLASSIFICATION_DATASET_PATH,
-)
+from project.config.user_config import CLASSIFICATION_DATASET_PATH
 from project.dataset.ucf101video import UCF101VideoDataModule
 from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
 from project.utils.cli import query_yes_no
+from project.utils.train import load_model
 
 
 class ClassificationDatasetBuilder(SelfSupervisedVideoPredictionLitModel):
@@ -29,16 +26,6 @@ class ClassificationDatasetBuilder(SelfSupervisedVideoPredictionLitModel):
                 torch.squeeze(convgru_hidden_states[i]),
                 f"{CLASSIFICATION_DATASET_PATH}/{self.class_to_idx[y[i].item()]}/{uuid.uuid1()}.pt",
             )
-
-
-def load_model(dm):
-    if os.path.exists(PREDICTION_MODEL_CHECKPOINT):
-        return ClassificationDatasetBuilder.load_from_checkpoint(
-            PREDICTION_MODEL_CHECKPOINT, datamodule=dm
-        )
-    else:
-        print("Error! Cannot load checkpoint at {}")
-        sys.exit(-1)
 
 
 def build_dataset(model, dataset_save_dir, dataloader):
@@ -64,7 +51,7 @@ def build_dataset(model, dataset_save_dir, dataloader):
 
 if __name__ == "__main__":
     ucf101_dm = UCF101VideoDataModule(batch_size=8)
-    lit_model = load_model(ucf101_dm)
+    lit_model = load_model(ClassificationDatasetBuilder, batch_size=8)
     lit_model.eval()
     ucf101_dm.setup("fit")
     build_dataset(

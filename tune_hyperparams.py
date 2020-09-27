@@ -7,24 +7,39 @@ from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
 
-from project.dataset.ucf101video import UCF101VideoDataModule
 from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
 
 
 class HyperparameterTuningWrapper(SelfSupervisedVideoPredictionLitModel):
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(
+            self.model.parameters(), lr=self.lr, weight_decay=1e-5
+        )
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=6, gamma=0.1)
+        return [optimizer], [scheduler]
+
     def training_epoch_end(self, outputs):
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
         return {
             "avg_train_loss": avg_loss,
         }
 
+    def val_dataloader(self):
+        """"""
+
+    def validation_step(self, batch, batch_nb):
+        """"""
+
+    def validation_epoch_end(self, outputs):
+        """"""
+
 
 class TuneReportCallback(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
-        tune.report(loss=trainer.callback_metrics["avg_train_loss"].item())
+        tune.report(loss=trainer.callback_metrics["avg_train_loss"])
 
 
-def train_ucf101_tune(config, datamodule, num_epochs=4):
+def train_ucf101_tune(config, num_epochs):
     if "l1_loss_wt" in config:
         total_weight = (
             config["l1_loss_wt"] + config["l2_loss_wt"] + config["ssim_loss_wt"]
@@ -35,7 +50,7 @@ def train_ucf101_tune(config, datamodule, num_epochs=4):
 
     print("Evaluating Params: ", config)
 
-    model = HyperparameterTuningWrapper(datamodule=datamodule, **config)
+    model = HyperparameterTuningWrapper(batch_size=4, **config)
     trainer = Trainer(
         checkpoint_callback=False,
         max_epochs=num_epochs,
@@ -52,14 +67,12 @@ def train_ucf101_tune(config, datamodule, num_epochs=4):
 def tune_ucf101_asha(
     config: dict,
     num_samples=50,
-    num_epochs=6,
+    num_epochs=12,
     gpus_per_trial=1,
     parameter_columns=None,
     metric_columns=None,
     folder_name="tune_ucf101_asha",
 ):
-    ucf101_dm = UCF101VideoDataModule(batch_size=8)
-
     scheduler = ASHAScheduler(
         metric="loss", mode="min", max_t=num_epochs, grace_period=1, reduction_factor=2
     )
@@ -69,7 +82,7 @@ def tune_ucf101_asha(
     )
 
     tune.run(
-        partial(train_ucf101_tune, datamodule=ucf101_dm, num_epochs=num_epochs),
+        partial(train_ucf101_tune, num_epochs=num_epochs),
         resources_per_trial={"gpu": gpus_per_trial},
         config=config,
         num_samples=num_samples,
@@ -103,7 +116,8 @@ if __name__ == "__main__":
             parameter_columns=["l1_loss_wt", "l2_loss_wt", "ssim_loss_wt"],
             metric_columns=["loss", "training_iteration"],
             folder_name="tune_ucf101_losses",
-            num_samples=50,
+            num_samples=30,
+            num_epochs=12,
         )
     elif args.params == "lr":
         tune_ucf101_asha(

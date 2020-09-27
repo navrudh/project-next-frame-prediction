@@ -134,4 +134,5 @@ class UCF101VideoDataModule(LightningDataModule):
             num_workers=DATALOADER_WORKERS,
             collate_fn=custom_collate,
             shuffle=True,
+            # pin_memory=True,
         )
