@@ -33,9 +33,9 @@ class RandomFrameRate(torch.nn.Module):
             Tensor or List of Tensors: selected frames.
         """
         if torch.rand(1) < self.p:
-            choice = self.choices[-1]
-        else:
             choice = self.choices[0]
+        else:
+            choice = self.choices[-1]
 
         return x[choice]
 

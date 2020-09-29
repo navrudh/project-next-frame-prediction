@@ -56,11 +56,9 @@ class UCF101VideoDataModule(LightningDataModule):
                 # reshape into (T, C, H, W) for easier convolutions
                 transforms.Lambda(order_video_image_dimensions),
                 # normalize
-                transforms.Lambda(normalize_video_images),
+                # transforms.Lambda(normalize_video_images),
                 # rescale to the most common size
-                transforms.Lambda(
-                    lambda x: F.interpolate(x, (self.image_dim, self.image_dim))
-                ),
+                transforms.Lambda(lambda x: F.interpolate(x, (224, 224))),
                 # transforms.Lambda(lambda x: x.half()),
             ]
         )
@@ -94,14 +92,6 @@ class UCF101VideoDataModule(LightningDataModule):
                 transform=self.test_transforms,
                 fold=self.fold,
             )
-
-        # # train/val split
-        # mnist_train, mnist_val = random_split(mnist_train, [55000, 5000])
-
-        # # assign to use in dataloaders
-        # self.train_dataset = mnist_train
-        # self.val_dataset = mnist_val
-        # self.test_dataset = mnist_test
 
     def train_dataloader(self):
         print("Train Dataloader Called")

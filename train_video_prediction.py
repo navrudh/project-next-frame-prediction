@@ -6,9 +6,8 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.datasets.utils
 import torchvision.datasets.utils
-import torchvision.transforms.functional as TV_F
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateLogger
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
@@ -39,25 +38,6 @@ def order_video_image_dimensions(x):
     return x.permute(0, 3, 1, 2)
 
 
-def normalize_video_images(x):
-    for img in x:
-        TV_F.normalize(
-            img, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], inplace=True,
-        )
-    return x
-
-
-def unnormalize_video_images(x):
-    for img in x:
-        TV_F.normalize(
-            img,
-            mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
-            std=[1 / 0.229, 1 / 0.224, 1 / 0.225],
-            inplace=True,
-        )
-    return x
-
-
 class SelfSupervisedVideoPredictionLitModel(LightningModule):
     def __init__(
         self,
@@ -70,7 +50,6 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         freeze_epochs=3,
     ):
         super().__init__()
-        # self.datamodule = datamodule
         self.batch_size = batch_size
         self.lr = lr
         self.l1_loss_wt = l1_loss_wt
@@ -86,8 +65,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         )
         self.model.freeze_encoder()
 
-        # self.image_dim = image_dim
         self.fold = 1
+        self.val_dataset = None
+        self.train_dataset = None
 
         self.train_transforms = transforms.Compose(
             [
@@ -97,8 +77,8 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
                 transforms.Lambda(lambda x: x / 255.0),
                 # reshape into (T, C, H, W) for easier convolutions
                 transforms.Lambda(order_video_image_dimensions),
-                # normalize
-                transforms.Lambda(normalize_video_images),
+                # # normalize
+                # transforms.Lambda(normalize_video_images),
                 # augment video frames
                 transforms.Lambda(random_augment_video_frames),
                 # # for half precision training
@@ -114,8 +94,8 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
                 transforms.Lambda(lambda x: x / 255.0),
                 # reshape into (T, C, H, W) for easier convolutions
                 transforms.Lambda(order_video_image_dimensions),
-                # normalize
-                transforms.Lambda(normalize_video_images),
+                # # normalize
+                # transforms.Lambda(normalize_video_images),
                 # rescale to the most common size
                 transforms.Lambda(lambda x: F.interpolate(x, (224, 224))),
                 # for half precision training
@@ -125,9 +105,6 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
         self.classes = list(sorted(datasets.utils.list_dir(UCF101_ROOT_PATH)))
         self.class_to_idx = {i: self.classes[i] for i in range(len(self.classes))}
-
-        # self.classes = datamodule.classes
-        # self.class_to_idx = datamodule.class_to_idx
 
     def criterion(self, t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
         ssim_loss = (1.0 - PL_F.ssim(t1, t2, data_range=1.0)) / 2.0
@@ -146,7 +123,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
-            self.model.parameters(), lr=self.lr, weight_decay=1e-5
+            self.model.parameters(), lr=self.hparams.lr, weight_decay=1e-5
         )
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, patience=3, factor=0.5
@@ -155,107 +132,102 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def predict_frame(self, batch, batch_nb):
         x, y = batch
-        # x = x[:, :6, :, :, :]
         # pick 5 frames, first 3 are seeds, then predict next 3
         seed_frames = x[:, :3, :, :, :]
-        curr = seed_frames
-        b, t, c, w, h = curr.shape
+        b, t, c, w, h = seed_frames.shape
         num_new_frames = 2
         for i in range(num_new_frames):
             seq_len = t + i
-            curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
-            # print("C0", curr.shape)
-            pred = self.forward(curr, seq_len)
-            # print("P", pred.shape)
-            # print("seq", seq_len)
+            seed_frames = seed_frames.reshape(
+                -1, 3, self.image_dim, self.image_dim
+            ).contiguous()
+            pred = self.forward(seed_frames, seq_len)
             pred_frame_only = double_resolution(pred[seq_len - 1 :: seq_len, :, :, :])
 
-            # print("PFO", pred_frame_only.shape)
-            curr = torch.cat(
+            seed_frames = torch.cat(
                 [
-                    curr.view(b, seq_len, c, w, h),
+                    seed_frames.view(b, seq_len, c, w, h),
                     pred_frame_only.reshape(b, 1, c, w, h),
                 ],
                 dim=1,
             ).detach_()
-            # print("C1", curr.shape)
-        # print("CR", curr.shape)
-        curr = curr.reshape(-1, 3, self.image_dim, self.image_dim)
-        # print("CR", curr.shape)
-        pred = self.forward(curr, seq_len=5)
-        # print("PR", pred.shape)
-        pred = pred.view(-1, 5, *pred.shape[-3:])
-        # print("PR", pred.shape)
-        pred = pred[:, -3:, :, :, :].reshape(-1, *pred.shape[-3:]).contiguous()
-        # print("PR", pred.shape)
 
-        # curr = F.pad(curr, [0] * 7 + [5 - curr.shape[1]], "constant", 0)
-        # curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
-        # pred = self(curr)
-        next = x[:, -3:, :, :, :]
-        # next = F.pad(next, [0] * 7 + [5 - next.shape[1]], "constant", 0)
-        next = next.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
-        next = F.max_pool2d(next, 2)
+        seed_frames = seed_frames.reshape(-1, 3, self.image_dim, self.image_dim)
+
+        pred = self.forward(seed_frames, seq_len=5)
+        pred = pred.view(-1, 5, *pred.shape[-3:])
+        pred = pred[:, -3:, :, :, :].reshape(-1, *pred.shape[-3:]).contiguous()
+
+        inp = x[:, :6, :, :, :]
+        inp = inp.view(-1, 3, self.image_dim, self.image_dim)
+        inp = F.max_pool2d(inp, 2)
+
+        next = inp.view(-1, 6, *inp.shape[-3:])[:, -3:, :, :, :]
+        next = next.reshape(-1, *next.shape[-3:]).contiguous()
         loss = self.criterion(pred, next)
 
-        return curr, next, pred, loss
+        pred6 = inp.view(-1, 6, *inp.shape[-3:]).detach().clone()
+        pred6[:, -3:, :, :, :] = pred.view(-1, 3, *pred.shape[-3:])[:, -3:, :, :, :]
+        pred6 = pred6.view(-1, *pred6.shape[-3:])
+
+        return inp, pred6, loss
+
+    def dataset_init(self, stage):
+        if stage == "train" and not self.train_dataset:
+            self.train_dataset = datasets.UCF101(
+                UCF101_ROOT_PATH,
+                UCF101_ANNO_PATH,
+                frames_per_clip=12,
+                step_between_clips=100,
+                num_workers=UCF101_WORKERS,
+                train=True,
+                transform=self.train_transforms,
+                fold=self.fold,
+            )
+
+        if stage == "val" and not self.val_dataset:
+            self.val_dataset = datasets.UCF101(
+                UCF101_ROOT_PATH,
+                UCF101_ANNO_PATH,
+                frames_per_clip=12,
+                step_between_clips=100,
+                num_workers=UCF101_WORKERS,
+                train=False,
+                transform=self.test_transforms,
+                fold=self.fold,
+            )
 
     def train_dataloader(self):
         print("Train Dataloader Called")
-        dataset = datasets.UCF101(
-            UCF101_ROOT_PATH,
-            UCF101_ANNO_PATH,
-            frames_per_clip=12,
-            step_between_clips=100,
-            num_workers=UCF101_WORKERS,
-            train=True,
-            transform=self.train_transforms,
-            fold=self.fold,
-        )
-        loader = DataLoader(
-            dataset,
+        self.dataset_init("train")
+        return DataLoader(
+            self.train_dataset,
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
             collate_fn=custom_collate,
             shuffle=True,
             # pin_memory=True,
         )
-        return loader
 
     def val_dataloader(self):
         print("Val Dataloader Called")
-        dataset = datasets.UCF101(
-            UCF101_ROOT_PATH,
-            UCF101_ANNO_PATH,
-            frames_per_clip=12,
-            step_between_clips=100,
-            num_workers=UCF101_WORKERS,
-            train=False,
-            transform=self.test_transforms,
-            fold=self.fold,
-        )
-        loader = DataLoader(
-            dataset,
+        self.dataset_init("val")
+        return DataLoader(
+            self.val_dataset,
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
             collate_fn=custom_collate,
             shuffle=True,
             # pin_memory=True,
         )
-        return loader
 
     def training_step(self, batch, batch_nb):
-        curr, next, pred, loss = self.predict_frame(batch, batch_nb)
+        inp, pred, loss = self.predict_frame(batch, batch_nb)
 
         if batch_nb % 100 == 0:
             self.logger.experiment.add_image(
-                "curr",
-                torchvision.utils.make_grid(curr, normalize=True),
-                self.global_step,
-            )
-            self.logger.experiment.add_image(
-                "next",
-                torchvision.utils.make_grid(next, normalize=True),
+                "input",
+                torchvision.utils.make_grid(inp, normalize=True),
                 self.global_step,
             )
             self.logger.experiment.add_image(
@@ -268,7 +240,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         return {"loss": loss, "log": tensorboard_logs}
 
     def validation_step(self, batch, batch_nb):
-        curr, next, pred, loss = self.predict_frame(batch, batch_nb)
+        inp, pred, loss = self.predict_frame(batch, batch_nb)
         return {"val_loss": loss}
 
     def validation_epoch_end(self, outputs):
@@ -288,6 +260,8 @@ checkpoint_callback = ModelCheckpoint(
     monitor="epoch",
     mode="max",
 )
+
+lr_logger = LearningRateLogger(logging_interval="epoch")
 
 
 def load_or_train_model(
@@ -323,6 +297,7 @@ def load_or_train_model(
             gpus=1,
             # deterministic=True,
             max_epochs=PREDICTION_MAX_EPOCHS,
+            callbacks=[lr_logger],
             # limit_train_batches=0.001,
             # limit_val_batches=0.1,
             # val_check_interval=0.5,
@@ -334,7 +309,8 @@ def load_or_train_model(
             get_kwargs(
                 checkpoint_callback=checkpoint_callback,
                 callbacks=[
-                    SaveCheckpointAtEpochEnd(filepath=PREDICTION_MODEL_CHECKPOINT)
+                    *kwargs["callbacks"],
+                    SaveCheckpointAtEpochEnd(filepath=PREDICTION_MODEL_CHECKPOINT),
                 ],
             )
         )
@@ -368,7 +344,7 @@ if __name__ == "__main__":
     lit_model = SelfSupervisedVideoPredictionLitModel(batch_size=4)
     lit_model, trainer = load_or_train_model(
         lit_model,
-        tensorboard_graph_name="prediction-3-augment-small",
+        tensorboard_graph_name="prediction-augment-small",
         # resume=False,
         # save=False,
         # validation=False,
