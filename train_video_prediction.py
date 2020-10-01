@@ -45,8 +45,8 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         image_dim: int = 224,
         lr: float = 0.0015,
         l1_loss_wt: float = 0.30,
-        l2_loss_wt: float = 0.45,
-        ssim_loss_wt: float = 0.25,
+        l2_loss_wt: float = 0.01,
+        ssim_loss_wt: float = 1.1,
         freeze_epochs=3,
     ):
         super().__init__()
