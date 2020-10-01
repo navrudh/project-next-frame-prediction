@@ -38,26 +38,30 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         self.lateral_inputs = {}
         self._register_hooks()
 
-    def forward(self, x, seq_len=5, test=False, pooling_out_size=(1, 1)):
+    def forward(self, x, seq_len=3, n_ahead=3, test=False, pooling_out_size=(1, 1)):
         self.encoder(x)
         lb0 = self.latent_block_0.forward(
             self.lateral_inputs[self.enc2lateral_hook_layers[0]],
             seq_len=seq_len,
+            n_ahead=n_ahead,
             test=test,
         )
         lb1 = self.latent_block_1.forward(
             self.lateral_inputs[self.enc2lateral_hook_layers[1]],
             seq_len=seq_len,
+            n_ahead=n_ahead,
             test=test,
         )
         lb2 = self.latent_block_2.forward(
             self.lateral_inputs[self.enc2lateral_hook_layers[2]],
             seq_len=seq_len,
+            n_ahead=n_ahead,
             test=test,
         )
         lb3 = self.latent_block_3.forward(
             self.lateral_inputs[self.enc2lateral_hook_layers[3]],
             seq_len=seq_len,
+            n_ahead=n_ahead,
             test=test,
         )
 

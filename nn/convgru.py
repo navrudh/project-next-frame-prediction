@@ -5,10 +5,9 @@ This file was taken from the repository https://github.com/aserdega/convlstmgru
 """
 
 import torch
+from torch import nn
 
-from torch import nn, device as torch_device, cuda as torch_cuda
-
-device = torch_device("cuda:0" if torch_cuda.is_available() else "cpu")
+from project.config.cuda_config import current_device
 
 
 class ConvGRUCell(nn.Module):
@@ -19,7 +18,7 @@ class ConvGRUCell(nn.Module):
         hidden_dim,
         kernel_size,
         bias=True,
-        activation=torch.tanh_,
+        activation=torch.tanh,
         batchnorm=False,
     ):
         """
@@ -90,7 +89,7 @@ class ConvGRUCell(nn.Module):
 
     def init_hidden(self, batch_size):
         state = torch.zeros(
-            batch_size, self.hidden_dim, self.height, self.width, device=device
+            batch_size, self.hidden_dim, self.height, self.width, device=current_device
         )
         return state
 
@@ -115,6 +114,12 @@ class ConvGRUCell(nn.Module):
 
 
 class ConvGRU(nn.Module):
+    """
+    n_step_ahead:
+        number of frames to predict ahead, it will predict atleast one step ahead
+
+    """
+
     def __init__(
         self,
         input_size,
@@ -124,8 +129,9 @@ class ConvGRU(nn.Module):
         num_layers=3,
         batch_first=True,
         bias=True,
-        activation=torch.tanh_,
+        activation=torch.tanh,
         batchnorm=False,
+        n_step_ahead=1,
     ):
         super(ConvGRU, self).__init__()
 
@@ -147,6 +153,7 @@ class ConvGRU(nn.Module):
         self.num_layers = num_layers
         self.batch_first = batch_first
         self.bias = bias
+        self.n_step_ahead = max(0, n_step_ahead - 1)
 
         cell_list = []
         for i in range(0, self.num_layers):

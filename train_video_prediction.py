@@ -126,9 +126,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         optimizer = torch.optim.Adam(
             self.model.parameters(), lr=self.hparams.lr, weight_decay=1e-5
         )
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=3, factor=0.5
-        )
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.5)
         return [optimizer], [scheduler]
 
     def predict_frame(self, batch, batch_nb):
@@ -136,28 +134,26 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         # pick 5 frames, first 3 are seeds, then predict next 3
         seed_frames = x[:, :3, :, :, :]
         b, t, c, w, h = seed_frames.shape
-        num_new_frames = 2
-        for i in range(num_new_frames):
-            seq_len = t + i
-            seed_frames = seed_frames.reshape(
-                -1, 3, self.image_dim, self.image_dim
-            ).contiguous()
-            pred = self.forward(seed_frames, seq_len)
-            pred_frame_only = double_resolution(pred[seq_len - 1 :: seq_len, :, :, :])
-
-            seed_frames = torch.cat(
-                [
-                    seed_frames.view(b, seq_len, c, w, h),
-                    pred_frame_only.reshape(b, 1, c, w, h),
-                ],
-                dim=1,
-            ).detach_()
+        # num_new_frames = 2
+        # for i in range(num_new_frames):
+        #     seq_len = t + i
+        #     seed_frames = seed_frames.reshape(
+        #         -1, 3, self.image_dim, self.image_dim
+        #     ).contiguous()
+        #     pred = self.forward(seed_frames, seq_len)
+        #     pred_frame_only = double_resolution(pred[seq_len - 1 :: seq_len, :, :, :])
+        #
+        #     seed_frames = torch.cat(
+        #         [
+        #             seed_frames.view(b, seq_len, c, w, h),
+        #             pred_frame_only.reshape(b, 1, c, w, h),
+        #         ],
+        #         dim=1,
+        #     ).detach_()
 
         seed_frames = seed_frames.reshape(-1, 3, self.image_dim, self.image_dim)
 
-        pred = self.forward(seed_frames, seq_len=5)
-        pred = pred.view(-1, 5, *pred.shape[-3:])
-        pred = pred[:, -3:, :, :, :].reshape(-1, *pred.shape[-3:]).contiguous()
+        pred3 = self.forward(seed_frames, seq_len=3)
 
         inp = x[:, :6, :, :, :]
         inp = inp.view(-1, 3, self.image_dim, self.image_dim)
@@ -165,10 +161,10 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
         next = inp.view(-1, 6, *inp.shape[-3:])[:, -3:, :, :, :]
         next = next.reshape(-1, *next.shape[-3:]).contiguous()
-        loss = self.criterion(pred, next)
+        loss = self.criterion(pred3, next)
 
         pred6 = inp.view(-1, 6, *inp.shape[-3:]).detach().clone()
-        pred6[:, -3:, :, :, :] = pred.view(-1, 3, *pred.shape[-3:])[:, -3:, :, :, :]
+        pred6[:, -3:, :, :, :] = pred3.view(-1, 3, *pred3.shape[-3:])
         pred6 = pred6.view(-1, *pred6.shape[-3:])
 
         return inp, pred6, loss
@@ -326,8 +322,11 @@ def load_or_train_model(
         )
 
     if resume and os.path.exists(PREDICTION_MODEL_CHECKPOINT):
+        print("Found existing model at ", PREDICTION_MODEL_CHECKPOINT)
         trainer = Trainer(resume_from_checkpoint=PREDICTION_MODEL_CHECKPOINT, **kwargs)
+        print("Resuming training ...")
     else:
+        print("Begin training from scratch ...")
         trainer = Trainer(
             # precision=16, # 2x speedup but NAN loss after 500 steps
             # profiler=profiler,
@@ -345,7 +344,7 @@ if __name__ == "__main__":
     lit_model = SelfSupervisedVideoPredictionLitModel(batch_size=4)
     lit_model, trainer = load_or_train_model(
         lit_model,
-        tensorboard_graph_name=WORK_DIR.split["/"][-1],
+        tensorboard_graph_name=WORK_DIR.split("/")[-1],
         # resume=False,
         # save=False,
         # validation=False,

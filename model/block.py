@@ -1,5 +1,7 @@
+import torch
 from torch import nn
 
+from project.config.cuda_config import current_device
 from project.nn.conv import LocationAwareConv2d
 from project.nn.convgru import ConvGRU
 
@@ -30,6 +32,7 @@ class LatentBlock(nn.Module):
             hidden_dim=self.lstm_dims,
             num_layers=len(self.lstm_dims),
             kernel_size=(3, 3),
+            n_step_ahead=3,
         )
         self.convgru2 = ConvGRU(
             input_size=(input_dim, input_dim),
@@ -37,6 +40,7 @@ class LatentBlock(nn.Module):
             hidden_dim=self.lstm_dims,
             num_layers=len(self.lstm_dims),
             kernel_size=(5, 5),
+            n_step_ahead=3,
         )
         self.convgru3 = ConvGRU(
             input_size=(input_dim, input_dim),
@@ -44,13 +48,18 @@ class LatentBlock(nn.Module):
             hidden_dim=self.lstm_dims,
             num_layers=len(self.lstm_dims),
             kernel_size=(7, 7),
+            n_step_ahead=3,
         )
 
-    def forward(self, x, seq_len=5, test=False):
+    def forward(self, x, seq_len=3, n_ahead=3, test=False):
         # print("LAT-BLK", x.shape)
         x0 = self.conv1x1(x)
 
         _x = x.view(-1, seq_len, *x.shape[-3:])
+        b, t, c, w, h = _x.shape
+        pad = torch.zeros((b, n_ahead, c, w, h), device=current_device)
+        _x = torch.cat((_x, pad), dim=1)
+
         x1, hidden_state_1 = self.convgru1.forward(_x)
         x2, hidden_state_2 = self.convgru2.forward(_x)
         x3, hidden_state_3 = self.convgru3.forward(_x)
@@ -58,7 +67,12 @@ class LatentBlock(nn.Module):
         if test:
             return hidden_state_1[-1], hidden_state_2[-1], hidden_state_3[-1]
 
-        return x0, x1, x2, x3
+        return (
+            x0,
+            x1[:, -n_ahead:, :, :, :],
+            x2[:, -n_ahead:, :, :, :],
+            x3[:, -n_ahead:, :, :, :],
+        )
 
 
 class DecoderBlock(nn.Module):
