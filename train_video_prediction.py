@@ -16,6 +16,7 @@ from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
 from project.config.user_config import (
     PREDICTION_MODEL_CHECKPOINT,
     PREDICTION_MAX_EPOCHS,
+    WORK_DIR,
 )
 from project.config.user_config import (
     UCF101_ANNO_PATH,
@@ -344,7 +345,7 @@ if __name__ == "__main__":
     lit_model = SelfSupervisedVideoPredictionLitModel(batch_size=4)
     lit_model, trainer = load_or_train_model(
         lit_model,
-        tensorboard_graph_name="prediction-augment-small",
+        tensorboard_graph_name=WORK_DIR.split["/"][-1],
         # resume=False,
         # save=False,
         # validation=False,

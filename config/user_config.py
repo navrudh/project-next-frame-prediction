@@ -18,10 +18,13 @@ UCF101_CACHE = config["ucf101"]["cache"]
 # Dataloader Config Vars
 DATALOADER_WORKERS = config["dataloader"]["workers"]
 
+# Work Dir
+WORK_DIR = config["workdir"]
+
 # Prediction Config Vars
-PREDICTION_MODEL_CHECKPOINT = config["prediction"]["model"]
+PREDICTION_MODEL_CHECKPOINT = WORK_DIR + "/model.ckpt"
+PREDICTION_OUTPUT_DIR = WORK_DIR + "/generated"
 PREDICTION_MAX_EPOCHS = config["prediction"]["epochs"]
-PREDICTION_OUTPUT_DIR = config["prediction"]["outdir"]
 
 # Classification Config Vars
-CLASSIFICATION_DATASET_PATH = config["classification"]["root"]
+CLASSIFICATION_DATASET_PATH = WORK_DIR + "/classification/tensors"

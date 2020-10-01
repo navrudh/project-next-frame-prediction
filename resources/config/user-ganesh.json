@@ -8,12 +8,10 @@
     "cache": "/home/user/ganesh/datasets/UCF101-Frames",
     "workers": 12
   },
+  "workdir": "/home/user/ganesh/models/vision-classification/prediction-aug-ssim-l1",
   "prediction": {
-    "model": "/home/user/ganesh/models/vision-classification/prediction-augment-small/model.ckpt",
-    "outdir": "/home/user/ganesh/models/vision-classification/prediction-augment-small/generated",
     "epochs": 20
   },
   "classification": {
-    "root": "/home/user/ganesh/datasets/vision-classification/prediction-augment-small/classification/tensors"
   }
 }
