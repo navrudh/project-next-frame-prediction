@@ -38,32 +38,31 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         self.lateral_inputs = {}
         self._register_hooks()
 
-    def forward(self, x, seq_len=3, n_ahead=3, test=False, pooling_out_size=(1, 1)):
-        self.encoder(x)
-        lb0 = self.latent_block_0.forward(
-            self.lateral_inputs[self.enc2lateral_hook_layers[0]],
-            seq_len=seq_len,
-            n_ahead=n_ahead,
-            test=test,
+        self.latent_blocks = (
+            self.latent_block_0,
+            self.latent_block_1,
+            self.latent_block_2,
+            self.latent_block_3,
         )
-        lb1 = self.latent_block_1.forward(
-            self.lateral_inputs[self.enc2lateral_hook_layers[1]],
-            seq_len=seq_len,
-            n_ahead=n_ahead,
-            test=test,
+        self.decoder_blocks = (
+            self.decoder_block_1,
+            self.decoder_block_2,
+            self.decoder_block_3,
+            self.decoder_block_4,
+            self.decoder_block_5,
         )
-        lb2 = self.latent_block_2.forward(
-            self.lateral_inputs[self.enc2lateral_hook_layers[2]],
-            seq_len=seq_len,
-            n_ahead=n_ahead,
-            test=test,
-        )
-        lb3 = self.latent_block_3.forward(
-            self.lateral_inputs[self.enc2lateral_hook_layers[3]],
-            seq_len=seq_len,
-            n_ahead=n_ahead,
-            test=test,
-        )
+
+    def forward(self, x, test=False, pooling_out_size=(1, 1)):
+        b, t, c, w, h = x.shape
+
+        self.encoder(x.view(-1, c, w, h))
+
+        decoder_inputs = []
+        for idx, block in enumerate(self.latent_blocks):
+            inp = self.lateral_inputs[self.enc2lateral_hook_layers[idx]]
+            decoder_inputs.append(
+                tuple(block.forward(inp.view(b, t, *inp.shape[-3:]), test=test))
+            )
 
         if test:
             return torch.cat(
@@ -71,56 +70,22 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
                     nn.functional.adaptive_avg_pool2d(
                         torch.cat(lb, dim=1), pooling_out_size
                     )
-                    for lb in [lb0, lb1, lb2, lb3]
+                    for lb in decoder_inputs
                 ),
                 dim=1,
             )
 
-        lb0 = tuple(
-            it.view(-1, seq_len, *it.shape[-3:])[:, -seq_len:, :, :, :].reshape(
-                -1, *it.shape[-3:]
-            )
-            for it in lb0
-        )
-        lb1 = tuple(
-            it.view(-1, seq_len, *it.shape[-3:])[:, -seq_len:, :, :, :].reshape(
-                -1, *it.shape[-3:]
-            )
-            for it in lb1
-        )
-        lb2 = tuple(
-            it.view(-1, seq_len, *it.shape[-3:])[:, -seq_len:, :, :, :].reshape(
-                -1, *it.shape[-3:]
-            )
-            for it in lb2
-        )
-        lb3 = tuple(
-            it.view(-1, seq_len, *it.shape[-3:])[:, -seq_len:, :, :, :].reshape(
-                -1, *it.shape[-3:]
-            )
-            for it in lb3
-        )
+        decoder_inputs.append(self.lateral_inputs[self.enc2lateral_hook_layers[4]])
 
-        x = self.lateral_inputs[self.enc2lateral_hook_layers[4]]
-        # print("DEC-BLK-1", x.shape)
-        x = self.decoder_block_1(x)
-        x = x.view(-1, seq_len, *x.shape[-3:])[:, -seq_len:, :, :, :].reshape(
-            -1, *x.shape[-3:]
-        )
-        # print("DEC-BLK-2: CAT ", x.shape, [it.shape for it in lb3])
-        x = torch.cat(lb3 + (x,), dim=1)
-        x = self.decoder_block_2(x)
-        # print("DEC-BLK-3: CAT ", x.shape, [it.shape for it in lb2])
-        x = torch.cat(lb2 + (x,), dim=1)
-        x = self.decoder_block_3(x)
-        # print("DEC-BLK-4: CAT ", x.shape, [it.shape for it in lb1])
-        x = torch.cat(lb1 + (x,), dim=1)
-        x = self.decoder_block_4(x)
-        # print("DEC-BLK-5: CAT ", x.shape, [it.shape for it in lb0])
-        x = torch.cat(lb0 + (x,), dim=1)
-        x = self.decoder_block_5(x)
-        # print("DEC-BLK: OUT", x.shape)
-        return x
+        output = None
+        for dec_inp, dec_block in zip(reversed(decoder_inputs), self.decoder_blocks):
+            if output is None:
+                output = dec_inp
+            else:
+                output = torch.cat(dec_inp + (output,), dim=1)
+            output = dec_block(output)
+
+        return output
 
     def _register_hooks(self):
         for n, m in self.encoder.named_modules():

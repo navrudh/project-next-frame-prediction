@@ -18,7 +18,7 @@ inp = torch.randn((b, t, 3, IMG_DIM, IMG_DIM)).to(device)
 _inp = inp.view(-1, 3, IMG_DIM, IMG_DIM)
 
 ## TRAIN
-pred = model.forward(_inp, seq_len=t)
+pred = model.forward(inp)
 print(
     "TRAIN pred:", pred.shape, ", expected:", [b * t, 3, IMG_DIM // 2, IMG_DIM // 2],
 )
@@ -30,7 +30,7 @@ l = loss(
     pred[t - 1 :: t, :, :, :],
 )
 print(l)
-# exit()
+exit()
 
 ## TEST
 out_size = (1, 1)

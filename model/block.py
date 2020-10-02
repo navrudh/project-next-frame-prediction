@@ -53,7 +53,7 @@ class LatentBlock(nn.Module):
 
     def forward(self, x, seq_len=3, n_ahead=3, test=False):
         # print("LAT-BLK", x.shape)
-        x0 = self.conv1x1(x)
+        x0 = self.conv1x1(x.view(-1, *x.shape[-3:]))
 
         _x = x.view(-1, seq_len, *x.shape[-3:])
         b, t, c, w, h = _x.shape
@@ -67,11 +67,15 @@ class LatentBlock(nn.Module):
         if test:
             return hidden_state_1[-1], hidden_state_2[-1], hidden_state_3[-1]
 
+        x1 = x1[:, -n_ahead:, :, :, :]
+        x2 = x2[:, -n_ahead:, :, :, :]
+        x3 = x3[:, -n_ahead:, :, :, :]
+
         return (
             x0,
-            x1[:, -n_ahead:, :, :, :],
-            x2[:, -n_ahead:, :, :, :],
-            x3[:, -n_ahead:, :, :, :],
+            x1.reshape(-1, *x1.shape[-3:]),
+            x2.reshape(-1, *x2.shape[-3:]),
+            x3.reshape(-1, *x3.shape[-3:]),
         )
 
 

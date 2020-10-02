@@ -45,9 +45,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         batch_size,
         image_dim: int = 224,
         lr: float = 0.0015,
-        l1_loss_wt: float = 0.30,
-        l2_loss_wt: float = 0.01,
-        ssim_loss_wt: float = 1.1,
+        l1_loss_wt: float = 0.5,
+        l2_loss_wt: float = 0.3,
+        ssim_loss_wt: float = 1,
         freeze_epochs=3,
     ):
         super().__init__()
@@ -118,8 +118,8 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             + self.l2_loss_wt * l2_loss
         )
 
-    def forward(self, x, seq_len):
-        x = self.model.forward(x, seq_len=seq_len)
+    def forward(self, x):
+        x = self.model.forward(x)
         return x
 
     def configure_optimizers(self):
@@ -151,9 +151,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         #         dim=1,
         #     ).detach_()
 
-        seed_frames = seed_frames.reshape(-1, 3, self.image_dim, self.image_dim)
-
-        pred3 = self.forward(seed_frames, seq_len=3)
+        pred3 = self.forward(seed_frames)
 
         inp = x[:, :6, :, :, :]
         inp = inp.view(-1, 3, self.image_dim, self.image_dim)
