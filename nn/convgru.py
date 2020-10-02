@@ -1,7 +1,9 @@
 """
 Credits:
 
-This file was taken from the repository https://github.com/aserdega/convlstmgru
+The convGRU was adapted from https://github.com/aserdega/convlstmgru
+with modifications to allow n_step predictions
+
 """
 
 import torch
@@ -153,7 +155,7 @@ class ConvGRU(nn.Module):
         self.num_layers = num_layers
         self.batch_first = batch_first
         self.bias = bias
-        self.n_step_ahead = max(0, n_step_ahead - 1)
+        self.n_step_ahead = max(1, n_step_ahead)
 
         cell_list = []
         for i in range(0, self.num_layers):
@@ -187,6 +189,7 @@ class ConvGRU(nn.Module):
         -------
         last_state_list, layer_output
         """
+
         cur_layer_input = torch.unbind(input, dim=int(self.batch_first))
 
         if not hidden_state:
@@ -200,8 +203,14 @@ class ConvGRU(nn.Module):
         for layer_idx in range(self.num_layers):
             h = hidden_state[layer_idx]
             output_inner = []
-            for t in range(seq_len):
-                h = self.cell_list[layer_idx](input=cur_layer_input[t], h_prev=h)
+            for t in range(seq_len + self.n_step_ahead - 1):
+                if t < len(cur_layer_input):
+                    cell_input = cur_layer_input[t]
+                else:
+                    # 1st layer n_ahead_steps
+                    cell_input = h
+
+                h = self.cell_list[layer_idx](input=cell_input, h_prev=h)
                 output_inner.append(h)
 
             cur_layer_input = output_inner
@@ -209,7 +218,15 @@ class ConvGRU(nn.Module):
 
         layer_output = torch.stack(output_inner, dim=int(self.batch_first))
 
-        return layer_output, last_state_list
+        # print("LO+", layer_output.shape)
+        if self.batch_first:
+            layer_output = layer_output[:, -self.n_step_ahead :, :, :, :]
+        else:
+            layer_output = layer_output[-self.n_step_ahead :, :, :, :, :]
+        # print("LO-", layer_output.shape)
+
+        # return only predicted frames
+        return layer_output, last_state_list[-self.n_step_ahead :]
 
     def reset_parameters(self):
         for c in self.cell_list:

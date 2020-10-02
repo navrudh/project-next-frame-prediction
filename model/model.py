@@ -14,19 +14,19 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         self.enc2lateral_hook_layers = ["conv1", "layer1", "layer2", "layer3", "layer4"]
         self.encoder = torchvision.models.resnet18(pretrained=True)
         self.latent_block_0 = LatentBlock(
-            hidden_dim=hidden_dims[0], input_dim=latent_block_dims[0],
+            input_dim=hidden_dims[0], input_sz=latent_block_dims[0],
         )
         self.latent_block_1 = LatentBlock(
-            hidden_dim=hidden_dims[1], input_dim=latent_block_dims[1],
+            input_dim=hidden_dims[1], input_sz=latent_block_dims[1],
         )
         self.latent_block_2 = LatentBlock(
-            hidden_dim=hidden_dims[2],
-            input_dim=latent_block_dims[2],
+            input_dim=hidden_dims[2],
+            input_sz=latent_block_dims[2],
             location_aware=True,
         )
         self.latent_block_3 = LatentBlock(
-            hidden_dim=hidden_dims[3],
-            input_dim=latent_block_dims[3],
+            input_dim=hidden_dims[3],
+            input_sz=latent_block_dims[3],
             location_aware=True,
         )
         self.decoder_block_1 = DecoderBlock(in_channels=512, batch_norm=False)
@@ -55,7 +55,7 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
     def forward(self, x, test=False, pooling_out_size=(1, 1)):
         b, t, c, w, h = x.shape
 
-        self.encoder(x.view(-1, c, w, h))
+        self.encoder(x.reshape(-1, c, w, h))
 
         decoder_inputs = []
         for idx, block in enumerate(self.latent_blocks):
@@ -79,10 +79,10 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
 
         output = None
         for dec_inp, dec_block in zip(reversed(decoder_inputs), self.decoder_blocks):
-            if output is None:
-                output = dec_inp
-            else:
+            if output is not None:
                 output = torch.cat(dec_inp + (output,), dim=1)
+            else:
+                output = dec_inp
             output = dec_block(output)
 
         return output

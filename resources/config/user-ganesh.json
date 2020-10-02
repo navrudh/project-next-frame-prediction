@@ -8,7 +8,7 @@
     "cache": "/home/user/ganesh/datasets/UCF101-Frames",
     "workers": 12
   },
-  "workdir": "/home/user/ganesh/models/vision-classification/prediction-ahead",
+  "workdir": "/home/user/ganesh/models/vision-classification/prediction-cgru-ahead",
   "prediction": {
     "epochs": 20
   },
