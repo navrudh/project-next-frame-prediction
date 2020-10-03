@@ -173,7 +173,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
                 frames_per_clip=12,
-                step_between_clips=100,
+                step_between_clips=50,
                 num_workers=UCF101_WORKERS,
                 train=True,
                 transform=self.train_transforms,
@@ -185,7 +185,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
                 frames_per_clip=12,
-                step_between_clips=100,
+                step_between_clips=50,
                 num_workers=UCF101_WORKERS,
                 train=False,
                 transform=self.test_transforms,
@@ -339,7 +339,7 @@ if __name__ == "__main__":
     # ucf101_dm = UCF101VideoDataModule(batch_size=1)
     # for validation dataloader
     # ucf101_dm.setup("test")
-    lit_model = SelfSupervisedVideoPredictionLitModel(batch_size=4)
+    lit_model = SelfSupervisedVideoPredictionLitModel(batch_size=8)
     lit_model, trainer = load_or_train_model(
         lit_model,
         tensorboard_graph_name=WORK_DIR.split("/")[-1],
