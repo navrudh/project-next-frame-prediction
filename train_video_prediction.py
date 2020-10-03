@@ -45,9 +45,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         batch_size,
         image_dim: int = 224,
         lr: float = 0.0015,
-        l1_loss_wt: float = 0.5,
-        l2_loss_wt: float = 0.3,
-        ssim_loss_wt: float = 1,
+        l1_loss_wt: float = 0.16,
+        l2_loss_wt: float = 0.00005,
+        ssim_loss_wt: float = 0.84,
         freeze_epochs=3,
     ):
         super().__init__()
@@ -108,7 +108,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         self.class_to_idx = {i: self.classes[i] for i in range(len(self.classes))}
 
     def criterion(self, t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
-        ssim_loss = (1.0 - PL_F.ssim(t1, t2, data_range=1.0)) / 2.0
+        ssim_loss = 1.0 - PL_F.ssim(t1, t2, data_range=1.0)
         l1_loss = F.l1_loss(t1, t2)
         l2_loss = F.mse_loss(t1, t2)
 
