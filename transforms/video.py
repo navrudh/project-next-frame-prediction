@@ -1,4 +1,5 @@
 import random
+from functools import partial
 from typing import Union, List
 
 import torch
@@ -69,7 +70,7 @@ class RestrictFrameRate(torch.nn.Module):
         return self.__class__.__name__ + "(p={})".format(self.p)
 
 
-_image_transforms = torchvision.transforms.Compose(
+ucf101_video_augmentation = torchvision.transforms.Compose(
     [
         torchvision.transforms.RandomHorizontalFlip(0.5),
         torchvision.transforms.RandomVerticalFlip(0.1),
@@ -100,7 +101,13 @@ def seed_and_call(seed, func, *args, **kwargs):
     return func(*args, **kwargs)
 
 
-def random_augment_video_frames(x):
+def augment_video_frames(augmentation, x):
     seed = random.randint(0, 1000000)
 
-    return torch.stack([seed_and_call(seed, _image_transforms, img) for img in x])
+    return torch.stack([seed_and_call(seed, augmentation, img) for img in x])
+
+
+augment_ucf101_video_frames = partial(augment_video_frames, ucf101_video_augmentation)
+augment_bouncing_balls_video_frames = partial(
+    augment_video_frames, ucf101_video_augmentation
+)

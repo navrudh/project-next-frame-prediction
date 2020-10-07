@@ -8,9 +8,14 @@
     "cache": "/home/user/ganesh/datasets/UCF101-Frames",
     "workers": 12
   },
-  "workdir": "/home/user/ganesh/models/vision-classification/prediction-cgru-ahead",
+  "bouncing-balls": {
+    "size": 224,
+    "n-balls": 3,
+    "timesteps": 128
+  },
+  "workdir": "/home/user/ganesh/models/vision-classification/bouncing-balls-hs-feedback-6",
   "prediction": {
-    "epochs": 20
+    "epochs": 50
   },
   "classification": {
   }

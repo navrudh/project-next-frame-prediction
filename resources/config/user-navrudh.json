@@ -8,9 +8,14 @@
     "cache": "/media/navrudh/Data/ML/dataset/UCF101-Frames",
     "workers": 7
   },
-  "workdir": "/media/navrudh/Data/models/vision-classification/prediction-finetune",
+  "bouncing-balls": {
+    "size": 224,
+    "n-balls": 3,
+    "timesteps": 128
+  },
+  "workdir": "/media/navrudh/Data/models/vision-classification/bouncing-balls-hs-feedback",
   "prediction": {
-    "epochs": 4
+    "epochs": 20
   },
   "classification": {
   }

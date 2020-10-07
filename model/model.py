@@ -52,28 +52,31 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
             self.decoder_block_5,
         )
 
-    def forward(self, x, test=False, pooling_out_size=(1, 1)):
+    def forward(self, x, hidden=None, pooling_out_size=(1, 1)):
         b, t, c, w, h = x.shape
 
         self.encoder(x.reshape(-1, c, w, h))
 
         decoder_inputs = []
+        if hidden is None:
+            hidden = [None] * 4
         for idx, block in enumerate(self.latent_blocks):
             inp = self.lateral_inputs[self.enc2lateral_hook_layers[idx]]
-            decoder_inputs.append(
-                tuple(block.forward(inp.view(b, t, *inp.shape[-3:]), test=test))
+            outputs, hidden[idx] = block.forward(
+                inp.view(b, t, *inp.shape[-3:]), hidden=hidden[idx]
             )
+            decoder_inputs.append(tuple(outputs))
 
-        if test:
-            return torch.cat(
-                tuple(
-                    nn.functional.adaptive_avg_pool2d(
-                        torch.cat(lb, dim=1), pooling_out_size
-                    )
-                    for lb in decoder_inputs
-                ),
-                dim=1,
-            )
+        # if test:
+        #     return torch.cat(
+        #         tuple(
+        #             nn.functional.adaptive_avg_pool2d(
+        #                 torch.cat(lb, dim=1), pooling_out_size
+        #             )
+        #             for lb in decoder_inputs
+        #         ),
+        #         dim=1,
+        #     )
 
         decoder_inputs.append(self.lateral_inputs[self.enc2lateral_hook_layers[4]])
 
@@ -85,7 +88,7 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
                 output = dec_inp
             output = dec_block(output)
 
-        return output
+        return torch.sigmoid(output), hidden
 
     def _register_hooks(self):
         for n, m in self.encoder.named_modules():

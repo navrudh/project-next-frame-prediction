@@ -1,9 +1,7 @@
 """
 Credits:
 
-The convGRU was adapted from https://github.com/aserdega/convlstmgru
-with modifications to allow n_step predictions
-
+adapted from https://github.com/aserdega/convlstmgru
 """
 
 import torch
@@ -116,12 +114,6 @@ class ConvGRUCell(nn.Module):
 
 
 class ConvGRU(nn.Module):
-    """
-    n_step_ahead:
-        number of frames to predict ahead, it will predict atleast one step ahead
-
-    """
-
     def __init__(
         self,
         input_size,
@@ -133,7 +125,6 @@ class ConvGRU(nn.Module):
         bias=True,
         activation=torch.tanh,
         batchnorm=False,
-        n_step_ahead=1,
     ):
         super(ConvGRU, self).__init__()
 
@@ -155,7 +146,6 @@ class ConvGRU(nn.Module):
         self.num_layers = num_layers
         self.batch_first = batch_first
         self.bias = bias
-        self.n_step_ahead = max(1, n_step_ahead)
 
         cell_list = []
         for i in range(0, self.num_layers):
@@ -177,7 +167,7 @@ class ConvGRU(nn.Module):
 
         self.reset_parameters()
 
-    def forward(self, input, hidden_state=None):
+    def forward(self, input, hidden_state):
         """
 
         Parameters
@@ -192,9 +182,6 @@ class ConvGRU(nn.Module):
 
         cur_layer_input = torch.unbind(input, dim=int(self.batch_first))
 
-        if not hidden_state:
-            hidden_state = self.get_init_states(cur_layer_input[0].shape[0])
-
         seq_len = len(cur_layer_input)
 
         last_state_list = []
@@ -203,14 +190,8 @@ class ConvGRU(nn.Module):
         for layer_idx in range(self.num_layers):
             h = hidden_state[layer_idx]
             output_inner = []
-            for t in range(seq_len + self.n_step_ahead - 1):
-                if t < len(cur_layer_input):
-                    cell_input = cur_layer_input[t]
-                else:
-                    # 1st layer n_ahead_steps
-                    cell_input = h
-
-                h = self.cell_list[layer_idx](input=cell_input, h_prev=h)
+            for t in range(seq_len):
+                h = self.cell_list[layer_idx](input=cur_layer_input[t], h_prev=h)
                 output_inner.append(h)
 
             cur_layer_input = output_inner
@@ -218,15 +199,7 @@ class ConvGRU(nn.Module):
 
         layer_output = torch.stack(output_inner, dim=int(self.batch_first))
 
-        # print("LO+", layer_output.shape)
-        if self.batch_first:
-            layer_output = layer_output[:, -self.n_step_ahead :, :, :, :]
-        else:
-            layer_output = layer_output[-self.n_step_ahead :, :, :, :, :]
-        # print("LO-", layer_output.shape)
-
-        # return only predicted frames
-        return layer_output, last_state_list[-self.n_step_ahead :]
+        return layer_output, last_state_list
 
     def reset_parameters(self):
         for c in self.cell_list:

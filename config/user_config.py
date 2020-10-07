@@ -9,11 +9,17 @@ settings_dir = os.path.abspath(
 )
 config = json.load(open(f"{settings_dir}/user-{username}.json"))
 
-# Dataset Config Vars
+## Dataset Config Vars
+# UCF101
 UCF101_ROOT_PATH = config["ucf101"]["root"]
 UCF101_ANNO_PATH = config["ucf101"]["anno"]
 UCF101_WORKERS = config["ucf101"]["workers"]
 UCF101_CACHE = config["ucf101"]["cache"]
+
+# Bouncing Balls
+BB_SIZE = config["bouncing-balls"]["size"]
+BB_NBALLS = config["bouncing-balls"]["n-balls"]
+BB_TIMESTEPS = config["bouncing-balls"]["timesteps"]
 
 # Dataloader Config Vars
 DATALOADER_WORKERS = config["dataloader"]["workers"]
