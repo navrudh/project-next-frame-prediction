@@ -12,13 +12,13 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-tiny-in-gc-on",
+  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-tiny-bn-gc-on-clone",
   "prediction": {
     "batch_size": 2,
     "trainer_args": {
       "max_epochs": 70,
-      "gradient_clip_val": 0.5,
-      "accumulate_grad_batches": 2,
+      "gradient_clip_val": 0.25,
+      "accumulate_grad_batches": 1,
       "gpus": 1
     }
   },
