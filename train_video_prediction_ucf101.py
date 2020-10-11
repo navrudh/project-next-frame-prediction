@@ -119,11 +119,11 @@ class UCF101VideoPredictionLitModel(LightningModule):
         return x, hidden
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
+        optimizer = torch.optim.RMSprop(
             self.model.parameters(), lr=self.hparams.lr, weight_decay=1e-5
         )
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=4, factor=0.1
+            optimizer, patience=3, factor=0.5
         )
         return [optimizer], [scheduler]
 

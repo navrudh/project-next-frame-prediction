@@ -16,7 +16,7 @@
   "prediction": {
     "batch_size": 2,
     "trainer_args": {
-      "max_epochs": 50,
+      "max_epochs": 70,
       "gradient_clip_val": 0.5,
       "accumulate_grad_batches": 2,
       "gpus": 1
