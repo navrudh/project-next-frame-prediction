@@ -19,6 +19,7 @@ from config.user_config import (
     save_config,
     SAVE_CFG_KEY_DATASET,
     PREDICTION_TRAINER_KWARGS,
+    PREDICTION_BATCH_SIZE,
 )
 from config.user_config import (
     UCF101_ANNO_PATH,
@@ -363,7 +364,7 @@ if __name__ == "__main__":
     # ucf101_dm.setup("test")
     additional_config = {SAVE_CFG_KEY_DATASET: "ucf101"}
     save_config(additional_config)
-    lit_model = UCF101VideoPredictionLitModel(batch_size=2)
+    lit_model = UCF101VideoPredictionLitModel(batch_size=PREDICTION_BATCH_SIZE)
     lit_model, trainer = load_or_train_model(
         lit_model,
         tensorboard_graph_name=WORK_DIR.split("/")[-1],
