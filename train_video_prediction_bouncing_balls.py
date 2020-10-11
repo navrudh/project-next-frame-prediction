@@ -18,6 +18,8 @@ from project.config.user_config import (
     BB_SIZE,
     BB_TIMESTEPS,
     BB_NBALLS,
+    save_config,
+    SAVE_CFG_KEY_DATASET,
 )
 from project.config.user_config import (
     PREDICTION_MODEL_CHECKPOINT,
@@ -29,7 +31,12 @@ from project.dataset.bouncing_balls import BouncingBalls
 from project.model.model import SelfSupervisedVideoPredictionModel
 from project.transforms.video import augment_bouncing_balls_video_frames
 from project.utils.function import get_kwargs
-from project.utils.train import collate_bouncing_balls, double_resolution
+from project.utils.train import double_resolution
+
+SEQ_LEN = 6
+
+
+# torch.autograd.set_detect_anomaly(True)
 
 
 def order_video_image_dimensions(x):
@@ -82,13 +89,34 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
         return x, hidden
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
+        optimizer = torch.optim.RMSprop(
             self.model.parameters(), lr=self.hparams.lr, weight_decay=1e-5
         )
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, patience=3, factor=0.5
         )
         return [optimizer], [scheduler]
+
+    # def tbptt_split_batch(self, batch: torch.Tensor, split_size: int) -> list:
+    #     if not isinstance(batch, list) and not isinstance(batch, tuple):
+    #         batch = tuple([batch])
+    #     splits = []
+    #     for t in range(0, batch[0].shape[1], split_size):
+    #         batch_split = []
+    #         for i, x in enumerate(batch):
+    #             if isinstance(x, torch.Tensor):
+    #                 split_x = x[:, t:t + split_size]
+    #                 # print(split_x.shape)
+    #             else:
+    #                 raise Exception("Unsupported type: " + type(x))
+    #
+    #             batch_split.append(split_x)
+    #         splits.append(batch_split)
+    #     return splits
+    #
+    # def backward(self, use_amp, loss, optimizer, optimizer_idx):
+    #     # do a custom way of backward
+    #     loss.backward(retain_graph=True)
 
     def predict_frame(self, batch, batch_nb):
         x = batch
@@ -100,13 +128,13 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
         input_frames = x[:, :t, :, :, :]
         predicted_frames = []
 
-        hidden = None
+        hiddens = None
         for i in range(n_predicted):
-            pred, hidden = self.forward(input_frames, hidden)
+
+            pred, hiddens = self.forward(input_frames, hiddens)
             last_predicted_frame = pred.view(b, t, *pred.shape[-3:])[:, -1:, :, :, :]
 
             if i < (n_predicted - 1):
-                last_predicted_frame = last_predicted_frame
                 upscaled_pred_frame = double_resolution(
                     last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:])
                 )
@@ -124,7 +152,7 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
         pred3 = pred3.view(-1, *pred3.shape[-3:])
 
         inp = x[:, :6, :, :, :]
-        inp = inp.view(-1, 3, self.image_dim, self.image_dim)
+        inp = inp.reshape(-1, 3, self.image_dim, self.image_dim)
         inp = F.max_pool2d(inp, 2)
 
         next = inp.view(-1, 6, *inp.shape[-3:])[:, -3:, :, :, :]
@@ -144,7 +172,7 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
                 timesteps=BB_TIMESTEPS,
                 n_balls=BB_NBALLS,
                 mode="train",
-                train_size=2000,
+                train_size=500,
                 transform=transforms.Lambda(augment_bouncing_balls_video_frames),
             )
 
@@ -154,7 +182,8 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
                 timesteps=BB_TIMESTEPS,
                 n_balls=BB_NBALLS,
                 mode="val",
-                train_size=2000,
+                train_size=500,
+                # output_frames=6,
             )
 
     def train_dataloader(self):
@@ -164,7 +193,7 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
             self.train_dataset,
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
-            shuffle=True,
+            # shuffle=True,
             pin_memory=True,
         )
 
@@ -198,6 +227,14 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
 
     def validation_step(self, batch, batch_nb):
         inp, pred, loss = self.predict_frame(batch, batch_nb)
+
+        if batch_nb == 0:
+            self.logger.experiment.add_image(
+                "val_pred",
+                torchvision.utils.make_grid(pred, normalize=True, nrow=6),
+                self.global_step,
+            )
+
         return {"val_loss": loss}
 
     def validation_epoch_end(self, outputs):
@@ -255,6 +292,9 @@ def load_or_train_model(
             # deterministic=True,
             max_epochs=PREDICTION_MAX_EPOCHS,
             callbacks=[lr_logger],
+            gradient_clip_val=0.5,
+            accumulate_grad_batches=2,
+            # truncated_bptt_steps=SEQ_LEN,
             # limit_train_batches=0.001,
             # limit_val_batches=0.1,
             # val_check_interval=0.5,
@@ -301,7 +341,9 @@ if __name__ == "__main__":
     # ucf101_dm = UCF101VideoDataModule(batch_size=1)
     # for validation dataloader
     # ucf101_dm.setup("test")
-    lit_model = BouncingBallsVideoPredictionLitModel(batch_size=4)
+    additional_config = {SAVE_CFG_KEY_DATASET: "bouncing-balls"}
+    save_config(additional_config)
+    lit_model = BouncingBallsVideoPredictionLitModel(batch_size=2)
     lit_model, trainer = load_or_train_model(
         lit_model,
         tensorboard_graph_name=WORK_DIR.split("/")[-1],

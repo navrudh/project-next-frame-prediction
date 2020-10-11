@@ -133,11 +133,11 @@ def bounce_vec(res, n=2, steps=128, r=None, m=None):
     return v
 
 
-def sample_sequence_mat(sequence, step=3):
+def sample_sequence_mat(sequence, step=3, output_frames=6):
     startIdx = sequence.shape[0] // 2
-    stopIdx = startIdx + step * 6
+    stopIdx = startIdx + step * output_frames + 1
     # if stopIdx < sequence.shape[0]:
-    new_sequence = sequence[startIdx:stopIdx:step, :, :]
+    new_sequence = sequence[startIdx:stopIdx:step]
     new_sequence = new_sequence.unsqueeze(dim=1)
     new_sequence = new_sequence.repeat(1, 3, 1, 1)
     return new_sequence
@@ -153,6 +153,7 @@ class BouncingBalls(data.Dataset):
         mode="train",
         train_size=2000,
         transform=None,
+        output_frames=6,
     ):
         super().__init__()
         self.size = size
@@ -162,6 +163,7 @@ class BouncingBalls(data.Dataset):
         self.mode = mode
         self.train_size = train_size
         self.transform = transform
+        self.output_frames = output_frames
 
     def __getitem__(self, index):
         np.random.seed(hash(self.mode) % 2 ** 10 + index)
@@ -170,7 +172,7 @@ class BouncingBalls(data.Dataset):
         else:
             sample = bounce_mat(res=self.size, n=self.n_balls, steps=self.timesteps)
             sample = torch.from_numpy(sample)
-            sample = sample_sequence_mat(sample)
+            sample = sample_sequence_mat(sample, output_frames=self.output_frames)
 
         if self.transform:
             sample = self.transform(sample)

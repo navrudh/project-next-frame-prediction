@@ -18,7 +18,7 @@ class ConvGRUCell(nn.Module):
         hidden_dim,
         kernel_size,
         bias=True,
-        activation=torch.tanh,
+        activation=torch.tanh_,
         batchnorm=False,
     ):
         """
@@ -123,7 +123,7 @@ class ConvGRU(nn.Module):
         num_layers=3,
         batch_first=True,
         bias=True,
-        activation=torch.tanh,
+        activation=torch.tanh_,
         batchnorm=False,
     ):
         super(ConvGRU, self).__init__()

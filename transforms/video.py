@@ -7,6 +7,8 @@ import torchvision
 from pytorch_lightning import seed_everything
 from torch import Tensor
 
+from project.config.cuda_config import current_device
+
 
 class RandomFrameRate(torch.nn.Module):
     """Pick frames equally distant from each other as per the out_len
@@ -24,6 +26,7 @@ class RandomFrameRate(torch.nn.Module):
             torch.tensor([skip_frame * i for i in range(out_len)])
             for skip_frame in range(1, 1 + in_len // out_len)
         ]
+        self.out_len = out_len
 
     def forward(self, x: Union[Tensor, List[Tensor]]):
         """
@@ -41,7 +44,9 @@ class RandomFrameRate(torch.nn.Module):
         return x[choice]
 
     def __repr__(self):
-        return self.__class__.__name__ + "(p={})".format(self.p)
+        return self.__class__.__name__ + "(p={}, out_len={})".format(
+            self.p, self.out_len
+        )
 
 
 class RestrictFrameRate(torch.nn.Module):
@@ -67,7 +72,25 @@ class RestrictFrameRate(torch.nn.Module):
         return x[: self.out_len]
 
     def __repr__(self):
-        return self.__class__.__name__ + "(p={})".format(self.p)
+        return self.__class__.__name__ + "(out_len={})".format(self.out_len)
+
+
+class AddGaussianNoise(torch.nn.Module):
+    def __init__(self, p=0.5, mean=0, var=0.05):
+        super().__init__()
+        self.p = p
+        self.mean = mean
+        self.var = var
+
+    def __call__(self, tensor):
+        return torch.clamp(
+            tensor + torch.randn_like(tensor[0]) * self.var + self.mean, min=0, max=1
+        )
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(p={}, mean={}, var={})".format(
+            self.p, self.var, self.mean
+        )
 
 
 ucf101_video_augmentation = torchvision.transforms.Compose(
@@ -96,6 +119,20 @@ ucf101_video_augmentation = torchvision.transforms.Compose(
 )
 
 
+bb_video_augmentation = torchvision.transforms.Compose(
+    [
+        torchvision.transforms.RandomHorizontalFlip(0.5),
+        torchvision.transforms.RandomVerticalFlip(0.1),
+        torchvision.transforms.ToPILImage(),
+        # torchvision.transforms.ColorJitter(
+        #     brightness=0.25, contrast=0.25, saturation=0.25, hue=0.25
+        # ),
+        torchvision.transforms.Resize((224, 224)),
+        torchvision.transforms.ToTensor(),
+    ]
+)
+
+
 def seed_and_call(seed, func, *args, **kwargs):
     seed_everything(seed)
     return func(*args, **kwargs)
@@ -109,5 +146,5 @@ def augment_video_frames(augmentation, x):
 
 augment_ucf101_video_frames = partial(augment_video_frames, ucf101_video_augmentation)
 augment_bouncing_balls_video_frames = partial(
-    augment_video_frames, ucf101_video_augmentation
+    augment_video_frames, bb_video_augmentation
 )

@@ -13,7 +13,7 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/media/navrudh/Data/models/vision-classification/bouncing-balls-hs-feedback",
+  "workdir": "/media/navrudh/Data/models/vision-classification/bb-1",
   "prediction": {
     "epochs": 20
   },

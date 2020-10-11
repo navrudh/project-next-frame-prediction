@@ -53,10 +53,13 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         )
 
     def forward(self, x, hidden=None, pooling_out_size=(1, 1)):
+        # print("model.forward")
         b, t, c, w, h = x.shape
 
+        # 1. ENCODER
         self.encoder(x.reshape(-1, c, w, h))
 
+        # 2. INTERMEDIATE
         decoder_inputs = []
         if hidden is None:
             hidden = [None] * 4
@@ -80,6 +83,7 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
 
         decoder_inputs.append(self.lateral_inputs[self.enc2lateral_hook_layers[4]])
 
+        # 3. DECODER
         output = None
         for dec_inp, dec_block in zip(reversed(decoder_inputs), self.decoder_blocks):
             if output is not None:
@@ -88,7 +92,7 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
                 output = dec_inp
             output = dec_block(output)
 
-        return torch.sigmoid(output), hidden
+        return torch.sigmoid_(output), hidden
 
     def _register_hooks(self):
         for n, m in self.encoder.named_modules():

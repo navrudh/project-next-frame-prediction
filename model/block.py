@@ -1,7 +1,8 @@
 from torch import nn
-
+import torch
 from project.nn.conv import LocationAwareConv2d
 from project.nn.convgru import ConvGRU
+from project.nn.convgru2 import ConvGRU as ConvGRU2
 
 
 class LatentBlock(nn.Module):
@@ -82,13 +83,67 @@ class LatentBlock(nn.Module):
         )
 
 
+class ConvolutionalRecurrentBlocks(nn.Module):
+    def __init__(
+        self,
+        input_dim: int,
+        input_sz: int,
+        location_aware: bool = False,
+        output_dim: int = 64,
+    ):
+        super().__init__()
+        self.input_dim = input_dim
+        self.input_sz = input_sz
+        self.output_dim = output_dim
+
+        if location_aware:
+            self.conv1x1 = LocationAwareConv2d(
+                in_channels=input_dim,
+                out_channels=output_dim,
+                kernel_size=1,
+                w=input_sz,
+                h=input_sz,
+                gradient=None,
+            )
+        else:
+            self.conv1x1 = nn.Conv2d(
+                in_channels=input_dim, out_channels=output_dim, kernel_size=1
+            )
+
+        self.convgru = ConvGRU2(
+            input_size=input_dim,
+            hidden_sizes=output_dim,
+            kernel_sizes=[3, 5, 7],
+            n_layers=3,
+        )
+
+    def forward(self, x, hidden):
+        print("crb.forward")
+        b, t, c, w, h = x.shape
+        x0 = self.conv1x1(x.view(-1, *x.shape[-3:]))
+
+        layer_outs = []
+        inputs = torch.unbind(x, dim=1)
+        for idx, inp in enumerate(inputs):
+            hidden = self.convgru.forward(inp, hidden)
+            layer_outs.append(hidden)
+
+            print(len(hidden))
+            print([o.shape for o in hidden])
+
+        return (
+            (x0, hidden[-1]),
+            hidden,
+        )
+
+
 class DecoderBlock(nn.Module):
     def __init__(self, in_channels: int, batch_norm: bool = True):
         super().__init__()
         block = []
         block.append(nn.ReLU())
         if batch_norm:
-            block.append(nn.BatchNorm2d(in_channels))
+            block.append(nn.InstanceNorm2d(in_channels))
         block.extend(
             [
                 nn.Conv2d(
