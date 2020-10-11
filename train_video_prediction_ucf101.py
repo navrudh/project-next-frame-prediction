@@ -39,6 +39,11 @@ from utils.train import collate_ucf101, double_resolution
 def order_video_image_dimensions(x):
     return x.permute(0, 3, 1, 2)
 
+def image_int_to_float(x):
+    return x / 255.0
+
+def rescale_tensor(x):
+    return F.interpolate(x, (224, 224))
 
 class UCF101VideoPredictionLitModel(LightningModule):
     def __init__(
@@ -76,7 +81,7 @@ class UCF101VideoPredictionLitModel(LightningModule):
                 # adjust frames
                 RandomFrameRate(p=0.2, in_len=12, out_len=6),
                 # scale in [0, 1] of type float
-                transforms.Lambda(lambda x: x / 255.0),
+                transforms.Lambda(image_int_to_float),
                 # reshape into (T, C, H, W) for easier convolutions
                 transforms.Lambda(order_video_image_dimensions),
                 # # normalize
@@ -93,13 +98,13 @@ class UCF101VideoPredictionLitModel(LightningModule):
                 # adjust frames
                 # RestrictFrameRate(out_len=6),
                 # scale in [0, 1] of type float
-                transforms.Lambda(lambda x: x / 255.0),
+                transforms.Lambda(image_int_to_float),
                 # reshape into (T, C, H, W) for easier convolutions
                 transforms.Lambda(order_video_image_dimensions),
                 # # normalize
                 # transforms.Lambda(normalize_video_images),
                 # rescale to the most common size
-                transforms.Lambda(lambda x: F.interpolate(x, (224, 224))),
+                transforms.Lambda(rescale_tensor),
                 # for half precision training
                 # transforms.Lambda(lambda x: x.half()),
             ]
