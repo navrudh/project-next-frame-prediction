@@ -5,12 +5,11 @@ adapted from https://github.com/aserdega/convlstmgru
 """
 
 import torch
+from pytorch_lightning import LightningModule
 from torch import nn
 
-from config.cuda_config import current_device
 
-
-class ConvGRUCell(nn.Module):
+class ConvGRUCell(LightningModule):
     def __init__(
         self,
         input_size,
@@ -89,7 +88,7 @@ class ConvGRUCell(nn.Module):
 
     def init_hidden(self, batch_size):
         state = torch.zeros(
-            batch_size, self.hidden_dim, self.height, self.width, device=current_device
+            batch_size, self.hidden_dim, self.height, self.width, device=self.device
         )
         return state
 
