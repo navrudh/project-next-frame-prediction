@@ -15,10 +15,10 @@ from torchvision import datasets, transforms
 from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
 from project.config.user_config import (
     PREDICTION_MODEL_CHECKPOINT,
-    PREDICTION_MAX_EPOCHS,
     WORK_DIR,
     save_config,
     SAVE_CFG_KEY_DATASET,
+    PREDICTION_TRAINER_KWARGS,
 )
 from project.config.user_config import (
     UCF101_ANNO_PATH,
@@ -307,10 +307,7 @@ def load_or_train_model(
             logger=logger,
             gpus=1,
             # deterministic=True,
-            max_epochs=PREDICTION_MAX_EPOCHS,
             callbacks=[lr_logger],
-            gradient_clip_val=0.5,
-            accumulate_grad_batches=2,
             # limit_train_batches=0.001,
             # limit_val_batches=0.1,
             # val_check_interval=0.5,
@@ -336,6 +333,9 @@ def load_or_train_model(
                 limit_val_batches=0.0, val_check_interval=0.0, num_sanity_val_steps=0
             )
         )
+
+    # Override with User Settings
+    kwargs.update(PREDICTION_TRAINER_KWARGS)
 
     if resume and os.path.exists(PREDICTION_MODEL_CHECKPOINT):
         print("Found existing model at ", PREDICTION_MODEL_CHECKPOINT)

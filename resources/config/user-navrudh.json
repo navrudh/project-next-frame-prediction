@@ -14,7 +14,13 @@
   },
   "workdir": "/media/navrudh/Data/models/vision-classification/bb-1",
   "prediction": {
-    "epochs": 20
+    "batch_size": 2,
+    "trainer_args": {
+      "max_epochs": 20,
+      "gradient_clip_val": 0.5,
+      "accumulate_grad_batches": 2,
+      "gpus": 1
+    }
   },
   "classification": {
   }

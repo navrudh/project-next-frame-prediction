@@ -46,7 +46,8 @@ SAVE_CFG_KEY_DATASET = "dataset-used"
 # Prediction Config Vars
 PREDICTION_MODEL_CHECKPOINT = WORK_DIR + "/model.ckpt"
 PREDICTION_OUTPUT_DIR = WORK_DIR + "/generated"
-PREDICTION_MAX_EPOCHS = config["prediction"]["epochs"]
+PREDICTION_BATCH_SIZE = config["prediction"]["batch_size"]
+PREDICTION_TRAINER_KWARGS = config["prediction"]["trainer_args"]
 
 # Classification Config Vars
 CLASSIFICATION_DATASET_PATH = WORK_DIR + "/classification/tensors"

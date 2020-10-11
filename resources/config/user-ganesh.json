@@ -14,7 +14,13 @@
   },
   "workdir": "/home/user/ganesh/models/vision-classification/ucf101-in-gc-_5",
   "prediction": {
-    "epochs": 50
+    "batch_size": 2,
+    "trainer_args": {
+      "max_epochs": 50,
+      "gradient_clip_val": 0.5,
+      "accumulate_grad_batches": 2,
+      "gpus": 1
+    }
   },
   "classification": {
   }
