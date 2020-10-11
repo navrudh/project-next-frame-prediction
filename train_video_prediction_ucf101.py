@@ -239,8 +239,8 @@ class UCF101VideoPredictionLitModel(LightningModule):
                 torchvision.utils.make_grid(pred, normalize=True, nrow=6),
                 self.global_step,
             )
-        self.log("train_loss", loss)
-        return {"loss": loss}
+        tensorboard_logs = {"train_loss": loss}
+        return {"loss": loss, "log": tensorboard_logs}
 
     def validation_step(self, batch, batch_nb):
         inp, pred, loss = self.predict_frame(batch, batch_nb)
@@ -254,8 +254,8 @@ class UCF101VideoPredictionLitModel(LightningModule):
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        self.log("val_loss", avg_loss)
-        return {"avg_val_loss": avg_loss}
+        tensorboard_logs = {"val_loss": avg_loss}
+        return {"avg_val_loss": avg_loss, "log": tensorboard_logs}
 
     def on_epoch_start(self):
         if self.current_epoch == self.freeze_epochs:
