@@ -7,10 +7,10 @@ from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
 
-from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
+from project.train_video_prediction_ucf101 import UCF101VideoPredictionLitModel
 
 
-class HyperparameterTuningWrapper(SelfSupervisedVideoPredictionLitModel):
+class HyperparameterTuningWrapper(UCF101VideoPredictionLitModel):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
             self.model.parameters(), lr=self.lr, weight_decay=1e-5

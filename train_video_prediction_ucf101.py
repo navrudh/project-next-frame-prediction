@@ -17,6 +17,8 @@ from project.config.user_config import (
     PREDICTION_MODEL_CHECKPOINT,
     PREDICTION_MAX_EPOCHS,
     WORK_DIR,
+    save_config,
+    SAVE_CFG_KEY_DATASET,
 )
 from project.config.user_config import (
     UCF101_ANNO_PATH,
@@ -27,23 +29,22 @@ from project.config.user_config import UCF101_ROOT_PATH
 from project.model.model import SelfSupervisedVideoPredictionModel
 from project.transforms.video import (
     RandomFrameRate,
-    RestrictFrameRate,
     augment_ucf101_video_frames,
 )
 from project.utils.function import get_kwargs
-from project.utils.train import custom_collate
+from project.utils.train import collate_ucf101, double_resolution
 
 
 def order_video_image_dimensions(x):
     return x.permute(0, 3, 1, 2)
 
 
-class SelfSupervisedVideoPredictionLitModel(LightningModule):
+class UCF101VideoPredictionLitModel(LightningModule):
     def __init__(
         self,
         batch_size,
         image_dim: int = 224,
-        lr: float = 0.0015,
+        lr: float = 0.0001,
         l1_loss_wt: float = 0.16,
         l2_loss_wt: float = 0.00005,
         ssim_loss_wt: float = 0.84,
@@ -72,7 +73,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         self.train_transforms = transforms.Compose(
             [
                 # adjust frames
-                RandomFrameRate(p=0.3, in_len=12, out_len=6),
+                RandomFrameRate(p=0.2, in_len=12, out_len=6),
                 # scale in [0, 1] of type float
                 transforms.Lambda(lambda x: x / 255.0),
                 # reshape into (T, C, H, W) for easier convolutions
@@ -89,7 +90,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         self.test_transforms = transforms.Compose(
             [
                 # adjust frames
-                RestrictFrameRate(out_len=6),
+                # RestrictFrameRate(out_len=6),
                 # scale in [0, 1] of type float
                 transforms.Lambda(lambda x: x / 255.0),
                 # reshape into (T, C, H, W) for easier convolutions
@@ -111,49 +112,56 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         l1_loss = F.l1_loss(t1, t2)
         l2_loss = F.mse_loss(t1, t2)
 
-        return (
-            self.ssim_loss_wt * ssim_loss
-            + self.l1_loss_wt * l1_loss
-            + self.l2_loss_wt * l2_loss
-        )
+        return ssim_loss + l1_loss + l2_loss
 
-    def forward(self, x):
-        x = self.model.forward(x)
-        return x
+    def forward(self, x, hidden):
+        x, hidden = self.model.forward(x, hidden=hidden)
+        return x, hidden
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
+        optimizer = torch.optim.AdamW(
             self.model.parameters(), lr=self.hparams.lr, weight_decay=1e-5
         )
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.5)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, patience=4, factor=0.1
+        )
         return [optimizer], [scheduler]
 
     def predict_frame(self, batch, batch_nb):
         x, y = batch
         # pick 5 frames, first 3 are seeds, then predict next 3
-        seed_frames = x[:, :3, :, :, :]
-        b, t, c, w, h = seed_frames.shape
-        # num_new_frames = 2
-        # for i in range(num_new_frames):
-        #     seq_len = t + i
-        #     seed_frames = seed_frames.reshape(
-        #         -1, 3, self.image_dim, self.image_dim
-        #     ).contiguous()
-        #     pred = self.forward(seed_frames, seq_len)
-        #     pred_frame_only = double_resolution(pred[seq_len - 1 :: seq_len, :, :, :])
-        #
-        #     seed_frames = torch.cat(
-        #         [
-        #             seed_frames.view(b, seq_len, c, w, h),
-        #             pred_frame_only.reshape(b, 1, c, w, h),
-        #         ],
-        #         dim=1,
-        #     ).detach_()
+        b, t, c, w, h = x.shape
+        n_predicted = 3
+        t -= n_predicted
 
-        pred3 = self.forward(seed_frames)
+        input_frames = x[:, :t, :, :, :]
+        predicted_frames = []
+
+        hiddens = None
+        for i in range(n_predicted):
+
+            pred, hiddens = self.forward(input_frames, hiddens)
+            last_predicted_frame = pred.view(b, t, *pred.shape[-3:])[:, -1:, :, :, :]
+
+            if i < (n_predicted - 1):
+                upscaled_pred_frame = double_resolution(
+                    last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:])
+                )
+                input_frames = torch.cat(
+                    [
+                        input_frames[:, : t - 1, :, :, :],
+                        upscaled_pred_frame.reshape(b, 1, c, w, h),
+                    ],
+                    dim=1,
+                ).detach_()
+
+            predicted_frames.append(last_predicted_frame)
+
+        pred3 = torch.cat(predicted_frames, dim=1)
+        pred3 = pred3.view(-1, *pred3.shape[-3:])
 
         inp = x[:, :6, :, :, :]
-        inp = inp.view(-1, 3, self.image_dim, self.image_dim)
+        inp = inp.reshape(-1, 3, self.image_dim, self.image_dim)
         inp = F.max_pool2d(inp, 2)
 
         next = inp.view(-1, 6, *inp.shape[-3:])[:, -3:, :, :, :]
@@ -172,7 +180,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
                 frames_per_clip=12,
-                step_between_clips=50,
+                step_between_clips=75,
                 num_workers=UCF101_WORKERS,
                 train=True,
                 transform=self.train_transforms,
@@ -183,8 +191,8 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             self.val_dataset = datasets.UCF101(
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
-                frames_per_clip=12,
-                step_between_clips=50,
+                frames_per_clip=6,
+                step_between_clips=75,
                 num_workers=UCF101_WORKERS,
                 train=False,
                 transform=self.test_transforms,
@@ -198,9 +206,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             self.train_dataset,
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
-            collate_fn=custom_collate,
+            collate_fn=collate_ucf101,
             shuffle=True,
-            # pin_memory=True,
+            pin_memory=True,
         )
 
     def val_dataloader(self):
@@ -210,9 +218,9 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
             self.val_dataset,
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
-            collate_fn=custom_collate,
-            shuffle=True,
-            # pin_memory=True,
+            collate_fn=collate_ucf101,
+            shuffle=False,
+            pin_memory=True,
         )
 
     def training_step(self, batch, batch_nb):
@@ -221,12 +229,12 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
         if batch_nb % 100 == 0:
             self.logger.experiment.add_image(
                 "input",
-                torchvision.utils.make_grid(inp, normalize=True),
+                torchvision.utils.make_grid(inp, normalize=True, nrow=6),
                 self.global_step,
             )
             self.logger.experiment.add_image(
                 "pred",
-                torchvision.utils.make_grid(pred, normalize=True),
+                torchvision.utils.make_grid(pred, normalize=True, nrow=6),
                 self.global_step,
             )
 
@@ -235,6 +243,14 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def validation_step(self, batch, batch_nb):
         inp, pred, loss = self.predict_frame(batch, batch_nb)
+
+        if batch_nb == 0:
+            self.logger.experiment.add_image(
+                "val_pred",
+                torchvision.utils.make_grid(pred, normalize=True, nrow=6),
+                self.global_step,
+            )
+
         return {"val_loss": loss}
 
     def validation_epoch_end(self, outputs):
@@ -244,6 +260,7 @@ class SelfSupervisedVideoPredictionLitModel(LightningModule):
 
     def on_epoch_start(self):
         if self.current_epoch == self.freeze_epochs:
+            print("Unfreezing Resnet")
             self.model.unfreeze_encoder()
 
 
@@ -259,7 +276,7 @@ lr_logger = LearningRateLogger(logging_interval="epoch")
 
 
 def load_or_train_model(
-    lit_model: SelfSupervisedVideoPredictionLitModel,
+    lit_model: UCF101VideoPredictionLitModel,
     tensorboard_graph_name: str = None,
     save=True,
     resume=True,
@@ -292,6 +309,8 @@ def load_or_train_model(
             # deterministic=True,
             max_epochs=PREDICTION_MAX_EPOCHS,
             callbacks=[lr_logger],
+            gradient_clip_val=0.5,
+            accumulate_grad_batches=2,
             # limit_train_batches=0.001,
             # limit_val_batches=0.1,
             # val_check_interval=0.5,
@@ -320,7 +339,11 @@ def load_or_train_model(
 
     if resume and os.path.exists(PREDICTION_MODEL_CHECKPOINT):
         print("Found existing model at ", PREDICTION_MODEL_CHECKPOINT)
-        trainer = Trainer(resume_from_checkpoint=PREDICTION_MODEL_CHECKPOINT, **kwargs)
+        trainer = Trainer(
+            resume_from_checkpoint=PREDICTION_MODEL_CHECKPOINT,
+            # precision=16,
+            **kwargs,
+        )
         print("Resuming training ...")
     else:
         print("Begin training from scratch ...")
@@ -338,7 +361,9 @@ if __name__ == "__main__":
     # ucf101_dm = UCF101VideoDataModule(batch_size=1)
     # for validation dataloader
     # ucf101_dm.setup("test")
-    lit_model = SelfSupervisedVideoPredictionLitModel(batch_size=8)
+    additional_config = {SAVE_CFG_KEY_DATASET: "ucf101"}
+    save_config(additional_config)
+    lit_model = UCF101VideoPredictionLitModel(batch_size=2)
     lit_model, trainer = load_or_train_model(
         lit_model,
         tensorboard_graph_name=WORK_DIR.split("/")[-1],

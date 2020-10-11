@@ -18,7 +18,7 @@ inp = torch.randn((b, t, 3, IMG_DIM, IMG_DIM)).to(device)
 _inp = inp.view(-1, 3, IMG_DIM, IMG_DIM)
 
 ## TRAIN
-pred = model.forward(inp)
+pred, hidden = model.forward(inp, hidden=None)
 print(
     "TRAIN pred:", pred.shape, ", expected:", [b * t, 3, IMG_DIM // 2, IMG_DIM // 2],
 )

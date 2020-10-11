@@ -11,7 +11,7 @@ from project.config.user_config import (
     UCF101_WORKERS,
     DATALOADER_WORKERS,
 )
-from project.utils.train import custom_collate
+from project.utils.train import collate_ucf101
 
 
 def order_video_image_dimensions(x):
@@ -99,7 +99,7 @@ class UCF101VideoDataModule(LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
-            collate_fn=custom_collate,
+            collate_fn=collate_ucf101,
             shuffle=True,
             # pin_memory=True,
         )
@@ -110,7 +110,7 @@ class UCF101VideoDataModule(LightningDataModule):
             self.test_dataset,
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
-            collate_fn=custom_collate,
+            collate_fn=collate_ucf101,
             shuffle=True,
             # pin_memory=True,
         )
@@ -122,7 +122,7 @@ class UCF101VideoDataModule(LightningDataModule):
             self.test_dataset,
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
-            collate_fn=custom_collate,
+            collate_fn=collate_ucf101,
             shuffle=True,
             # pin_memory=True,
         )

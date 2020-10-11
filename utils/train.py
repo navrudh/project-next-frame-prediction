@@ -9,7 +9,7 @@ from torch.utils.data.dataloader import default_collate
 from project.config.user_config import PREDICTION_MODEL_CHECKPOINT
 
 
-def custom_collate(batch):
+def collate_ucf101(batch):
     filtered_batch = []
     for video, _, label in batch:
         filtered_batch.append((video, label))
