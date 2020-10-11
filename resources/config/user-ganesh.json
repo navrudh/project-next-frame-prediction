@@ -4,7 +4,7 @@
   },
   "ucf101": {
     "path": "/home/user/ganesh/datasets",
-    "custom-anno-split": "Tiny",
+    "custom-anno-split": "Small",
     "workers": 12
   },
   "bouncing-balls": {
@@ -12,7 +12,7 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-tiny-bn-gc-on-clone",
+  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-small-augment",
   "prediction": {
     "batch_size": 2,
     "trainer_args": {

@@ -12,12 +12,12 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/media/navrudh/Data/models/vision-classification/bb-1",
+  "workdir": "/media/navrudh/Data/models/vision-classification/bb-2",
   "prediction": {
-    "batch_size": 2,
+    "batch_size": 1,
     "trainer_args": {
       "max_epochs": 20,
-      "gradient_clip_val": 0.5,
+      "gradient_clip_val": 0.25,
       "accumulate_grad_batches": 2,
       "gpus": 1
     }
