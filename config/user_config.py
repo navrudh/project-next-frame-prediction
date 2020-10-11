@@ -26,7 +26,6 @@ UCF101_ANNO_PATH = (
 )
 
 UCF101_WORKERS = config["ucf101"]["workers"]
-UCF101_CACHE = config["ucf101"]["cache"]
 
 # Bouncing Balls
 BB_SIZE = config["bouncing-balls"]["size"]
