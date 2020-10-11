@@ -20,9 +20,9 @@ if len(config["ucf101"].get("custom-anno-split", "")) > 0:
 else:
     UCF101_ANNO_SUFFIX = ""
 UCF101_ANNO_PATH = (
-        UCF101_PATH
-        + "/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist"
-        + UCF101_ANNO_SUFFIX
+    UCF101_PATH
+    + "/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist"
+    + UCF101_ANNO_SUFFIX
 )
 
 UCF101_WORKERS = config["ucf101"]["workers"]

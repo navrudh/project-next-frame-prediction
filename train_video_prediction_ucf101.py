@@ -39,29 +39,22 @@ from utils.train import collate_ucf101, double_resolution
 def order_video_image_dimensions(x):
     return x.permute(0, 3, 1, 2)
 
+
 def image_int_to_float(x):
     return x / 255.0
+
 
 def rescale_tensor(x):
     return F.interpolate(x, (224, 224))
 
+
 class UCF101VideoPredictionLitModel(LightningModule):
     def __init__(
-        self,
-        batch_size,
-        image_dim: int = 224,
-        lr: float = 0.0001,
-        l1_loss_wt: float = 0.16,
-        l2_loss_wt: float = 0.00005,
-        ssim_loss_wt: float = 0.84,
-        freeze_epochs=3,
+        self, batch_size, image_dim: int = 224, lr: float = 0.0001, freeze_epochs=3,
     ):
         super().__init__()
         self.batch_size = batch_size
         self.lr = lr
-        self.l1_loss_wt = l1_loss_wt
-        self.l2_loss_wt = l2_loss_wt
-        self.ssim_loss_wt = ssim_loss_wt
         self.image_dim = image_dim
         self.freeze_epochs = freeze_epochs
 
@@ -133,8 +126,12 @@ class UCF101VideoPredictionLitModel(LightningModule):
         )
         return [optimizer], [scheduler]
 
-    def predict_frame(self, batch, batch_nb):
+    def x_from_batch(self, batch):
         x, y = batch
+        return x
+
+    def predict_frame(self, batch, batch_nb):
+        x = self.x_from_batch(batch)
         # pick 5 frames, first 3 are seeds, then predict next 3
         b, t, c, w, h = x.shape
         n_predicted = 3
@@ -231,7 +228,6 @@ class UCF101VideoPredictionLitModel(LightningModule):
 
     def training_step(self, batch, batch_nb):
         inp, pred, loss = self.predict_frame(batch, batch_nb)
-
         if batch_nb % 100 == 0:
             self.logger.experiment.add_image(
                 "input",
@@ -243,26 +239,23 @@ class UCF101VideoPredictionLitModel(LightningModule):
                 torchvision.utils.make_grid(pred, normalize=True, nrow=6),
                 self.global_step,
             )
-
-        tensorboard_logs = {"train_loss": loss}
-        return {"loss": loss, "log": tensorboard_logs}
+        self.log("train_loss", loss)
+        return {"loss": loss}
 
     def validation_step(self, batch, batch_nb):
         inp, pred, loss = self.predict_frame(batch, batch_nb)
-
         if batch_nb == 0:
             self.logger.experiment.add_image(
                 "val_pred",
                 torchvision.utils.make_grid(pred, normalize=True, nrow=6),
                 self.global_step,
             )
-
         return {"val_loss": loss}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        tensorboard_logs = {"val_loss": avg_loss}
-        return {"avg_val_loss": avg_loss, "log": tensorboard_logs}
+        self.log("val_loss", avg_loss)
+        return {"avg_val_loss": avg_loss}
 
     def on_epoch_start(self):
         if self.current_epoch == self.freeze_epochs:
@@ -282,7 +275,7 @@ lr_logger = LearningRateLogger(logging_interval="epoch")
 
 
 def load_or_train_model(
-    lit_model: UCF101VideoPredictionLitModel,
+    lit_model: LightningModule,
     tensorboard_graph_name: str = None,
     save=True,
     resume=True,
