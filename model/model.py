@@ -7,12 +7,43 @@ from torch import nn
 from model.block import LatentBlock, DecoderBlock
 
 
+class Resnet18(nn.Module):
+    def __init__(self):
+        super().__init__()
+        resnet18 = torchvision.models.resnet18(pretrained=True)
+        self.conv1 = resnet18.conv1
+        self.bn1 = resnet18.bn1
+        self.relu = resnet18.relu
+        self.maxpool = resnet18.maxpool
+        self.layer1 = resnet18.layer1
+        self.layer2 = resnet18.layer2
+        self.layer3 = resnet18.layer3
+        self.layer4 = resnet18.layer4
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x0 = x
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x1 = x
+        x = self.layer2(x)
+        x2 = x
+        x = self.layer3(x)
+        x3 = x
+        x = self.layer4(x)
+        x4 = x
+
+        return x0, x1, x2, x3, x4
+
+
 class SelfSupervisedVideoPredictionModel(nn.Module):
     def __init__(self, latent_block_dims: List[int]):
         super().__init__()
         hidden_dims = [64, 64, 128, 256]
-        self.enc2lateral_hook_layers = ["conv1", "layer1", "layer2", "layer3", "layer4"]
-        self.encoder = torchvision.models.resnet18(pretrained=True)
+        self.encoder = Resnet18()
         self.latent_block_0 = LatentBlock(
             input_dim=hidden_dims[0], input_sz=latent_block_dims[0],
         )
@@ -35,9 +66,6 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         self.decoder_block_4 = DecoderBlock(in_channels=320)
         self.decoder_block_5 = nn.Conv2d(in_channels=320, out_channels=3, kernel_size=1)
 
-        self.lateral_inputs = {}
-        self._register_hooks()
-
         self.latent_blocks = (
             self.latent_block_0,
             self.latent_block_1,
@@ -57,14 +85,14 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         b, t, c, w, h = x.shape
 
         # 1. ENCODER
-        self.encoder(x.reshape(-1, c, w, h))
+        encoder_outputs = self.encoder(x.reshape(-1, c, w, h))
 
         # 2. INTERMEDIATE
         decoder_inputs = []
         if hidden is None:
             hidden = [None] * 4
         for idx, block in enumerate(self.latent_blocks):
-            inp = self.lateral_inputs[self.enc2lateral_hook_layers[idx]]
+            inp = encoder_outputs[idx]
             outputs, hidden[idx] = block.forward(
                 inp.view(b, t, *inp.shape[-3:]), hidden=hidden[idx]
             )
@@ -81,7 +109,7 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
         #         dim=1,
         #     )
 
-        decoder_inputs.append(self.lateral_inputs[self.enc2lateral_hook_layers[4]])
+        decoder_inputs.append(encoder_outputs[4])
 
         # 3. DECODER
         output = None
@@ -93,19 +121,6 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
             output = dec_block(output)
 
         return torch.sigmoid_(output), hidden
-
-    def _register_hooks(self):
-        for n, m in self.encoder.named_modules():
-            # print(n)
-            if n in self.enc2lateral_hook_layers:
-                m.register_forward_hook(self.get_module_output(n))
-                print(f"registered hook\t({n})")
-
-    def get_module_output(self, name):
-        def hook(model, input, output):
-            self.lateral_inputs[name] = output
-
-        return hook
 
     def freeze_encoder(self):
         for param in self.encoder.parameters():
