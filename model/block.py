@@ -1,5 +1,6 @@
-from torch import nn
 import torch
+from torch import nn
+
 from nn.conv import LocationAwareConv2d
 from nn.convgru import ConvGRU
 from nn.convgru2 import ConvGRU as ConvGRU2
@@ -57,7 +58,7 @@ class LatentBlock(nn.Module):
 
     def forward(self, x, hidden):
         b, t, c, w, h = x.shape
-        x0 = self.conv1x1(x.view(-1, *x.shape[-3:]))
+        x0 = self.conv1x1(x.clone().view(-1, c, w, h))
 
         _x = x
 
@@ -68,9 +69,9 @@ class LatentBlock(nn.Module):
         else:
             hidden_state_1, hidden_state_2, hidden_state_3 = hidden
 
-        x1, hidden_state_1 = self.convgru1.forward(_x, hidden_state_1)
-        x2, hidden_state_2 = self.convgru2.forward(_x, hidden_state_2)
-        x3, hidden_state_3 = self.convgru3.forward(_x, hidden_state_3)
+        x1, hidden_state_1 = self.convgru1.forward(_x.clone(), hidden_state_1)
+        x2, hidden_state_2 = self.convgru2.forward(_x.clone(), hidden_state_2)
+        x3, hidden_state_3 = self.convgru3.forward(_x.clone(), hidden_state_3)
 
         return (
             (
@@ -141,9 +142,9 @@ class DecoderBlock(nn.Module):
     def __init__(self, in_channels: int, batch_norm: bool = True):
         super().__init__()
         block = []
-        block.append(nn.ReLU())
+        block.append(nn.LeakyReLU(negative_slope=0.1, inplace=True))
         if batch_norm:
-            block.append(nn.InstanceNorm2d(in_channels))
+            block.append(nn.BatchNorm2d(in_channels))
         block.extend(
             [
                 nn.Conv2d(
