@@ -5,14 +5,14 @@ import uuid
 import torch
 from pytorch_lightning import Trainer
 
-from project.config.user_config import CLASSIFICATION_DATASET_PATH
-from project.dataset.ucf101video import UCF101VideoDataModule
-from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
-from project.utils.cli import query_yes_no
-from project.utils.train import load_model
+from config.user_config import CLASSIFICATION_DATASET_PATH
+from dataset.ucf101video import UCF101VideoDataModule
+from train_video_prediction_ucf101 import UCF101VideoPredictionLitModel
+from utils.cli import query_yes_no
+from utils.train import load_model
 
 
-class ClassificationDatasetBuilder(SelfSupervisedVideoPredictionLitModel):
+class ClassificationDatasetBuilder(UCF101VideoPredictionLitModel):
     def test_step(self, batch, batch_nb):
         # Save Hidden Layers under batch numbers
         x, y = batch

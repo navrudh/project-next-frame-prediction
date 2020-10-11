@@ -7,7 +7,7 @@ adapted from https://github.com/aserdega/convlstmgru
 import torch
 from torch import nn
 
-from project.config.cuda_config import current_device
+from config.cuda_config import current_device
 
 
 class ConvGRUCell(nn.Module):

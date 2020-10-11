@@ -12,27 +12,27 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
 
-from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
-from project.config.user_config import (
+from callbacks.checkpoint import SaveCheckpointAtEpochEnd
+from config.user_config import (
     PREDICTION_MODEL_CHECKPOINT,
     WORK_DIR,
     save_config,
     SAVE_CFG_KEY_DATASET,
     PREDICTION_TRAINER_KWARGS,
 )
-from project.config.user_config import (
+from config.user_config import (
     UCF101_ANNO_PATH,
     UCF101_WORKERS,
     DATALOADER_WORKERS,
 )
-from project.config.user_config import UCF101_ROOT_PATH
-from project.model.model import SelfSupervisedVideoPredictionModel
-from project.transforms.video import (
+from config.user_config import UCF101_ROOT_PATH
+from model.model import SelfSupervisedVideoPredictionModel
+from transforms.video import (
     RandomFrameRate,
     augment_ucf101_video_frames,
 )
-from project.utils.function import get_kwargs
-from project.utils.train import collate_ucf101, double_resolution
+from utils.function import get_kwargs
+from utils.train import collate_ucf101, double_resolution
 
 
 def order_video_image_dimensions(x):

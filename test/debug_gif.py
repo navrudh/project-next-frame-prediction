@@ -9,7 +9,7 @@
 #     image_list.append(imageio.imread(file_name))
 #
 # imageio.mimwrite('animated_from_images.gif', image_list, format='GIF', duration=1)
-from project.utils.image import generate_gif
+from utils.image import generate_gif
 
 generate_gif(
     "/home/navrudh/Projects/Uni/cudavision/project/local_remote_out/out/",

@@ -4,8 +4,8 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from project.config.user_config import UCF101_CACHE
-from project.dataset.ucf101video import UCF101VideoDataModule
+from config.user_config import UCF101_CACHE
+from dataset.ucf101video import UCF101VideoDataModule
 
 
 def save_batch(step_name, batch, batch_nb, batch_size, class_to_idx):

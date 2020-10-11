@@ -1,13 +1,13 @@
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 
-from project.config.user_config import (
+from config.user_config import (
     BB_SIZE,
     BB_TIMESTEPS,
     BB_NBALLS,
     DATALOADER_WORKERS,
 )
-from project.dataset.bouncing_balls import BouncingBalls
+from dataset.bouncing_balls import BouncingBalls
 
 
 class BouncingBallsVideoDataModule(LightningDataModule):

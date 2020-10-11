@@ -4,19 +4,17 @@ import torch
 import torchvision
 from pytorch_lightning import Trainer
 
-from project.config.user_config import (
+from config.user_config import (
     PREDICTION_OUTPUT_DIR,
     load_saved_config,
     SAVE_CFG_KEY_DATASET,
 )
-from project.dataset.bouncing_balls_video import BouncingBallsVideoDataModule
-from project.dataset.ucf101video import UCF101VideoDataModule
-from project.train_video_prediction_bouncing_balls import (
-    BouncingBallsVideoPredictionLitModel,
-)
-from project.train_video_prediction_ucf101 import UCF101VideoPredictionLitModel
-from project.utils.image import generate_gif
-from project.utils.train import load_model
+from dataset.bouncing_balls_video import BouncingBallsVideoDataModule
+from dataset.ucf101video import UCF101VideoDataModule
+from train_video_prediction_bouncing_balls import BouncingBallsVideoPredictionLitModel
+from train_video_prediction_ucf101 import UCF101VideoPredictionLitModel
+from utils.image import generate_gif
+from utils.train import load_model
 
 OUTPUT_DIR = PREDICTION_OUTPUT_DIR
 

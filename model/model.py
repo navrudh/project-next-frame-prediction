@@ -4,7 +4,7 @@ import torch
 import torchvision
 from torch import nn
 
-from project.model.block import LatentBlock, DecoderBlock
+from model.block import LatentBlock, DecoderBlock
 
 
 class SelfSupervisedVideoPredictionModel(nn.Module):

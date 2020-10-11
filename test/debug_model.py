@@ -2,7 +2,7 @@ import torch
 from pytorch_lightning.metrics import SSIM
 from torch import device as torch_device, cuda as torch_cuda
 
-from project.model.model import SelfSupervisedVideoPredictionModel
+from model.model import SelfSupervisedVideoPredictionModel
 
 device = torch_device("cuda:0" if torch_cuda.is_available() else "cpu")
 

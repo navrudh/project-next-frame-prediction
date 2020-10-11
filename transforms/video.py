@@ -7,8 +7,6 @@ import torchvision
 from pytorch_lightning import seed_everything
 from torch import Tensor
 
-from project.config.cuda_config import current_device
-
 
 class RandomFrameRate(torch.nn.Module):
     """Pick frames equally distant from each other as per the out_len
@@ -117,7 +115,6 @@ ucf101_video_augmentation = torchvision.transforms.Compose(
         torchvision.transforms.ToTensor(),
     ]
 )
-
 
 bb_video_augmentation = torchvision.transforms.Compose(
     [

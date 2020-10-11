@@ -7,7 +7,7 @@ from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
 
-from project.train_video_prediction_ucf101 import UCF101VideoPredictionLitModel
+from train_video_prediction_ucf101 import UCF101VideoPredictionLitModel
 
 
 class HyperparameterTuningWrapper(UCF101VideoPredictionLitModel):

@@ -6,7 +6,7 @@ import torch
 from torch.nn import Upsample
 from torch.utils.data.dataloader import default_collate
 
-from project.config.user_config import PREDICTION_MODEL_CHECKPOINT
+from config.user_config import PREDICTION_MODEL_CHECKPOINT
 
 
 def collate_ucf101(batch):

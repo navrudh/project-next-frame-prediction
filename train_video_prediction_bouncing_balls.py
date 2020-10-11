@@ -12,8 +12,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
 
-from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
-from project.config.user_config import (
+from callbacks.checkpoint import SaveCheckpointAtEpochEnd
+from config.user_config import (
     DATALOADER_WORKERS,
     BB_SIZE,
     BB_TIMESTEPS,
@@ -22,16 +22,16 @@ from project.config.user_config import (
     SAVE_CFG_KEY_DATASET,
     PREDICTION_TRAINER_KWARGS,
 )
-from project.config.user_config import (
+from config.user_config import (
     PREDICTION_MODEL_CHECKPOINT,
     WORK_DIR,
 )
-from project.config.user_config import UCF101_ROOT_PATH
-from project.dataset.bouncing_balls import BouncingBalls
-from project.model.model import SelfSupervisedVideoPredictionModel
-from project.transforms.video import augment_bouncing_balls_video_frames
-from project.utils.function import get_kwargs
-from project.utils.train import double_resolution
+from config.user_config import UCF101_ROOT_PATH
+from dataset.bouncing_balls import BouncingBalls
+from model.model import SelfSupervisedVideoPredictionModel
+from transforms.video import augment_bouncing_balls_video_frames
+from utils.function import get_kwargs
+from utils.train import double_resolution
 
 SEQ_LEN = 6
 

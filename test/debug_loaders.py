@@ -32,7 +32,7 @@
 #     selected_files = set(selected_files)
 #     indices = [i for i in range(len(video_list)) if video_list[i] in selected_files]
 #     return indices
-from project.train_video_prediction import SelfSupervisedVideoPredictionLitModel
+from train_video_prediction import SelfSupervisedVideoPredictionLitModel
 
 lit_model = SelfSupervisedVideoPredictionLitModel(
     hidden_dims=[64, 64, 128, 256], batch_size=8

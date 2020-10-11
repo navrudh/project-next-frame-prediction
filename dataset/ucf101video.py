@@ -5,13 +5,13 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
 
-from project.config.user_config import (
+from config.user_config import (
     UCF101_ROOT_PATH,
     UCF101_ANNO_PATH,
     UCF101_WORKERS,
     DATALOADER_WORKERS,
 )
-from project.utils.train import collate_ucf101
+from utils.train import collate_ucf101
 
 
 def order_video_image_dimensions(x):

@@ -1,8 +1,8 @@
 from torch import nn
 import torch
-from project.nn.conv import LocationAwareConv2d
-from project.nn.convgru import ConvGRU
-from project.nn.convgru2 import ConvGRU as ConvGRU2
+from nn.conv import LocationAwareConv2d
+from nn.convgru import ConvGRU
+from nn.convgru2 import ConvGRU as ConvGRU2
 
 
 class LatentBlock(nn.Module):

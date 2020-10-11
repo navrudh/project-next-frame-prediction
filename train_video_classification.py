@@ -8,8 +8,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import DatasetFolder
 
-from project.config.user_config import CLASSIFICATION_DATASET_PATH
-from project.utils.info import print_device, seed
+from config.user_config import CLASSIFICATION_DATASET_PATH
+from utils.info import print_device, seed
 
 print_device()
 seed(42)
