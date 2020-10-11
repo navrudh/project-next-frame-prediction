@@ -13,8 +13,18 @@ config = json.load(open(f"{settings_dir}/user-{username}.json"))
 
 ## Dataset Config Vars
 # UCF101
-UCF101_ROOT_PATH = config["ucf101"]["root"]
-UCF101_ANNO_PATH = config["ucf101"]["anno"]
+UCF101_PATH = config["ucf101"]["path"]
+UCF101_ROOT_PATH = UCF101_PATH + "/UCF101/UCF-101"
+if len(config["ucf101"].get("custom-anno-split", "")) > 0:
+    UCF101_ANNO_SUFFIX = "-" + config["ucf101"]["custom-anno-split"]
+else:
+    UCF101_ANNO_SUFFIX = ""
+UCF101_ANNO_PATH = (
+    UCF101_PATH
+    + "/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist"
+    + UCF101_ANNO_SUFFIX
+)
+
 UCF101_WORKERS = config["ucf101"]["workers"]
 UCF101_CACHE = config["ucf101"]["cache"]
 

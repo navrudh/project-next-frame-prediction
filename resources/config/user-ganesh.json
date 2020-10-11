@@ -3,9 +3,8 @@
     "workers": 12
   },
   "ucf101": {
-    "root": "/home/user/ganesh/datasets/UCF101/UCF-101",
-    "anno": "/home/user/ganesh/datasets/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist-Tiny",
-    "cache": "/home/user/ganesh/datasets/UCF101-Frames",
+    "path": "/home/user/ganesh/datasets",
+    "custom-anno-split": "Tiny",
     "workers": 12
   },
   "bouncing-balls": {

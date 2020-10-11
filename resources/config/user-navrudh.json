@@ -3,9 +3,8 @@
     "workers": 7
   },
   "ucf101": {
-    "root": "/media/navrudh/Data/ML/dataset/UCF101/UCF-101",
-    "anno": "/media/navrudh/Data/ML/dataset/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist",
-    "cache": "/media/navrudh/Data/ML/dataset/UCF101-Frames",
+    "path": "/media/navrudh/Data/ML/dataset",
+    "custom-anno-split": "",
     "workers": 7
   },
   "bouncing-balls": {
