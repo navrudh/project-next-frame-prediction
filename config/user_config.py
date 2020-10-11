@@ -59,6 +59,7 @@ def save_config(additional_config=None):
         raise Exception("Cannot save. Maybe try cleaning the workdir?")
     if additional_config:
         _config = {**_config, **additional_config}
+    os.makedirs(WORK_DIR, exist_ok=True)
     with open(CONFIG_FILE, "w") as fp:
         json.dump(_config, fp, sort_keys=True, indent=4)
 
