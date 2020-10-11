@@ -1,11 +1,11 @@
 {
   "dataloader": {
-    "workers": 32
+    "workers": 7
   },
   "ucf101": {
     "path": "/data/share/user/dganesh/datasets",
     "custom-anno-split": "",
-    "workers": 32
+    "workers": 7
   },
   "bouncing-balls": {
     "size": 224,
@@ -14,12 +14,13 @@
   },
   "workdir": "/home/IAIS/dganesh/models/vision-classification/ucf101-bn-gc-on-clone",
   "prediction": {
-    "batch_size": 4,
+    "batch_size": 2,
     "trainer_args": {
       "max_epochs": 100,
       "gradient_clip_val": 0.25,
       "accumulate_grad_batches": 1,
-      "gpus": -1
+      "gpus": -1,
+      "distributed_backend": "ddp"
     }
   },
   "classification": {

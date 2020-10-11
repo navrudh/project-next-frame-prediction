@@ -5,9 +5,6 @@ LocationAwareConv2d class was taken from the repository https://github.com/AIS-B
 """
 
 import torch
-from torch import device as torch_device, cuda as torch_cuda
-
-device = torch_device("cuda:0" if torch_cuda.is_available() else "cpu")
 
 
 class LocationAwareConv2d(torch.nn.Conv2d):
@@ -35,10 +32,8 @@ class LocationAwareConv2d(torch.nn.Conv2d):
             groups=groups,
             bias=bias,
         )
-        self.locationBias = torch.nn.Parameter(torch.zeros(w, h, 3, device=device))
-        self.locationEncode = torch.autograd.Variable(
-            torch.ones(w, h, 3, device=device)
-        )
+        self.locationBias = torch.nn.Parameter(torch.zeros(w, h, 3))
+        self.locationEncode = torch.autograd.Variable(torch.ones(w, h, 3))
         if gradient:
             for i in range(w):
                 self.locationEncode[i, :, 1] = self.locationEncode[:, i, 0] = i / float(
@@ -46,5 +41,5 @@ class LocationAwareConv2d(torch.nn.Conv2d):
                 )
 
     def forward(self, inputs):
-        b = self.locationBias * self.locationEncode
+        b = self.locationBias.type_as(inputs) * self.locationEncode.type_as(inputs)
         return super().forward(inputs) + b[:, :, 0] + b[:, :, 1] + b[:, :, 2]

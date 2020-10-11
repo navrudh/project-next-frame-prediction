@@ -20,9 +20,9 @@ if len(config["ucf101"].get("custom-anno-split", "")) > 0:
 else:
     UCF101_ANNO_SUFFIX = ""
 UCF101_ANNO_PATH = (
-    UCF101_PATH
-    + "/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist"
-    + UCF101_ANNO_SUFFIX
+        UCF101_PATH
+        + "/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist"
+        + UCF101_ANNO_SUFFIX
 )
 
 UCF101_WORKERS = config["ucf101"]["workers"]
@@ -56,7 +56,7 @@ def save_config(additional_config=None):
     _config = copy.deepcopy(config)
     file = pathlib.Path(CONFIG_FILE)
     if file.exists():
-        raise Exception("Cannot save. Maybe try cleaning the workdir?")
+        print("Config exists. Should the workdir be cleaned?")
     if additional_config:
         _config = {**_config, **additional_config}
     os.makedirs(WORK_DIR, exist_ok=True)
