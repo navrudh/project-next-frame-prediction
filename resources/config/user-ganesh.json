@@ -12,7 +12,7 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-in-gc-_5",
+  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-tiny-in-gc-on",
   "prediction": {
     "batch_size": 2,
     "trainer_args": {
