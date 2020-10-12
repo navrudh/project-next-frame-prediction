@@ -13,7 +13,7 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-in-gc-_5",
+  "workdir": "/home/user/ganesh/models/vision-classification/bb-in-gc-_5",
   "prediction": {
     "epochs": 50
   },

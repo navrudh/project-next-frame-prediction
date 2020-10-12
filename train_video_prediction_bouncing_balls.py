@@ -6,12 +6,6 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.datasets.utils
 import torchvision.datasets.utils
-from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateLogger
-from pytorch_lightning.loggers import TensorBoardLogger
-from torch.utils.data.dataloader import DataLoader
-from torchvision import datasets, transforms
-
 from project.callbacks.checkpoint import SaveCheckpointAtEpochEnd
 from project.config.user_config import (
     DATALOADER_WORKERS,
@@ -32,6 +26,11 @@ from project.model.model import SelfSupervisedVideoPredictionModel
 from project.transforms.video import augment_bouncing_balls_video_frames
 from project.utils.function import get_kwargs
 from project.utils.train import double_resolution
+from pytorch_lightning import LightningModule, Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateLogger
+from pytorch_lightning.loggers import TensorBoardLogger
+from torch.utils.data.dataloader import DataLoader
+from torchvision import datasets, transforms
 
 SEQ_LEN = 6
 
@@ -93,7 +92,7 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
             self.model.parameters(), lr=self.hparams.lr, weight_decay=1e-5
         )
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=3, factor=0.5
+            optimizer, patience=5, factor=0.1
         )
         return [optimizer], [scheduler]
 
@@ -121,6 +120,8 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
     def predict_frame(self, batch, batch_nb):
         x = batch
         # pick 5 frames, first 3 are seeds, then predict next 3
+        x = x[:, :6, :, :, :]
+
         b, t, c, w, h = x.shape
         n_predicted = 3
         t -= n_predicted
@@ -128,13 +129,25 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
         input_frames = x[:, :t, :, :, :]
         predicted_frames = []
 
+        loss = 0
         hiddens = None
-        for i in range(n_predicted):
+        for i in range(1, n_predicted + 1):
 
+            target_frames = x[:, i : t + i, :, :, :]
             pred, hiddens = self.forward(input_frames, hiddens)
             last_predicted_frame = pred.view(b, t, *pred.shape[-3:])[:, -1:, :, :, :]
 
-            if i < (n_predicted - 1):
+            loss += self.criterion(
+                F.max_pool2d(
+                    target_frames[:, -1:, :, :, :].view(
+                        -1, 3, self.image_dim, self.image_dim
+                    ),
+                    2,
+                ),
+                last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:]),
+            )
+
+            if i < n_predicted:
                 upscaled_pred_frame = double_resolution(
                     last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:])
                 )
@@ -154,10 +167,6 @@ class BouncingBallsVideoPredictionLitModel(LightningModule):
         inp = x[:, :6, :, :, :]
         inp = inp.reshape(-1, 3, self.image_dim, self.image_dim)
         inp = F.max_pool2d(inp, 2)
-
-        next = inp.view(-1, 6, *inp.shape[-3:])[:, -3:, :, :, :]
-        next = next.reshape(-1, *next.shape[-3:]).contiguous()
-        loss = self.criterion(pred3, next)
 
         pred6 = inp.view(-1, 6, *inp.shape[-3:]).detach().clone()
         pred6[:, -3:, :, :, :] = pred3.view(-1, 3, *pred3.shape[-3:])
@@ -343,7 +352,7 @@ if __name__ == "__main__":
     # ucf101_dm.setup("test")
     additional_config = {SAVE_CFG_KEY_DATASET: "bouncing-balls"}
     save_config(additional_config)
-    lit_model = BouncingBallsVideoPredictionLitModel(batch_size=2)
+    lit_model = BouncingBallsVideoPredictionLitModel(batch_size=1)
     lit_model, trainer = load_or_train_model(
         lit_model,
         tensorboard_graph_name=WORK_DIR.split("/")[-1],

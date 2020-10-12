@@ -143,7 +143,7 @@ class DecoderBlock(nn.Module):
         block = []
         block.append(nn.ReLU())
         if batch_norm:
-            block.append(nn.InstanceNorm2d(in_channels))
+            block.append(nn.BatchNorm2d(in_channels))
         block.extend(
             [
                 nn.Conv2d(

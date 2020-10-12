@@ -13,7 +13,7 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/media/navrudh/Data/models/vision-classification/bb-1",
+  "workdir": "/media/navrudh/Data/models/vision-classification/bb-bn-gc-_5-loss-mods-fix",
   "prediction": {
     "epochs": 20
   },
