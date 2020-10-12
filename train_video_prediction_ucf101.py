@@ -126,12 +126,8 @@ class UCF101VideoPredictionLitModel(LightningModule):
         )
         return [optimizer], [scheduler]
 
-    def x_from_batch(self, batch):
-        x, y = batch
-        return x
-
     def predict_frame(self, batch, batch_nb):
-        x = self.x_from_batch(batch)
+        x, y = batch
         # pick 5 frames, first 3 are seeds, then predict next 3
         b, t, c, w, h = x.shape
         n_predicted = 3

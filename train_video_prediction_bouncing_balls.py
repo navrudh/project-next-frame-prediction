@@ -17,16 +17,10 @@ from train_video_prediction_ucf101 import (
     load_or_train_model,
 )
 from transforms.video import augment_bouncing_balls_video_frames
-
-
-# torch.autograd.set_detect_anomaly(True)
+from utils.train import collate_bouncing_balls
 
 
 class BouncingBallsVideoPredictionLitModel(UCF101VideoPredictionLitModel):
-    def x_from_batch(self, batch):
-        x = batch
-        return x
-
     def dataset_init(self, stage):
         if stage == "train" and not self.train_dataset:
             self.train_dataset = BouncingBalls(
@@ -57,6 +51,7 @@ class BouncingBallsVideoPredictionLitModel(UCF101VideoPredictionLitModel):
             num_workers=DATALOADER_WORKERS,
             shuffle=True,
             pin_memory=True,
+            collate_fn=collate_bouncing_balls,
         )
 
     def val_dataloader(self):
@@ -67,6 +62,7 @@ class BouncingBallsVideoPredictionLitModel(UCF101VideoPredictionLitModel):
             batch_size=self.batch_size,
             num_workers=DATALOADER_WORKERS,
             pin_memory=True,
+            collate_fn=collate_bouncing_balls,
         )
 
 
