@@ -1,0 +1,4 @@
+{
+  "remote": "user@server",
+  "remote-home": "/home/path/to/user-home"
+}
