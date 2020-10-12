@@ -12,7 +12,7 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/media/navrudh/Data/models/vision-classification/bb-in-loss-mod-1",
+  "workdir": "/media/navrudh/Data/models/vision-classification/bb-in-loss-mod-fix-1",
   "prediction": {
     "batch_size": 1,
     "learning_rate": 0.0001,

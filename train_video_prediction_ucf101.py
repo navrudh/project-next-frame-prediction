@@ -185,10 +185,6 @@ class UCF101VideoPredictionLitModel(LightningModule):
         inp = inp.reshape(-1, 3, self.image_dim, self.image_dim)
         inp = F.max_pool2d(inp, 2)
 
-        next = inp.view(-1, 6, *inp.shape[-3:])[:, -3:, :, :, :]
-        next = next.reshape(-1, *next.shape[-3:]).contiguous()
-        loss = self.criterion(pred3, next)
-
         pred6 = inp.view(-1, 6, *inp.shape[-3:]).detach().clone()
         pred6[:, -3:, :, :, :] = pred3.view(-1, 3, *pred3.shape[-3:])
         pred6 = pred6.view(-1, *pred6.shape[-3:])

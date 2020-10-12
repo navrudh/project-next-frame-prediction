@@ -12,7 +12,7 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-small-augment",
+  "workdir": "/home/user/ganesh/models/vision-classification/bb-bn-1",
   "prediction": {
     "batch_size": 2,
     "learning_rate": 0.0001,
