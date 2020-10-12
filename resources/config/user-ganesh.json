@@ -15,6 +15,10 @@
   "workdir": "/home/user/ganesh/models/vision-classification/ucf101-small-augment",
   "prediction": {
     "batch_size": 2,
+    "learning_rate": 0.0001,
+    "weight_decay": 1e-5,
+    "sched_patience": 5,
+    "sched_factor": 0.1,
     "trainer_args": {
       "max_epochs": 70,
       "gradient_clip_val": 0.25,

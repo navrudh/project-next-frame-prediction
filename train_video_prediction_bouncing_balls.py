@@ -9,6 +9,10 @@ from config.user_config import (
     SAVE_CFG_KEY_DATASET,
     PREDICTION_BATCH_SIZE,
     DATALOADER_WORKERS,
+    PREDICTION_LR,
+    PREDICTION_DECAY,
+    PREDICTION_PATIENCE,
+    PREDICTION_SCHED_FACTOR,
 )
 from config.user_config import WORK_DIR
 from dataset.bouncing_balls import BouncingBalls
@@ -69,7 +73,13 @@ class BouncingBallsVideoPredictionLitModel(UCF101VideoPredictionLitModel):
 if __name__ == "__main__":
     additional_config = {SAVE_CFG_KEY_DATASET: "bouncing-balls"}
     save_config(additional_config)
-    lit_model = BouncingBallsVideoPredictionLitModel(batch_size=PREDICTION_BATCH_SIZE)
+    lit_model = BouncingBallsVideoPredictionLitModel(
+        batch_size=PREDICTION_BATCH_SIZE,
+        lr=PREDICTION_LR,
+        wt_decay=PREDICTION_DECAY,
+        sched_patience=PREDICTION_PATIENCE,
+        sched_factor=PREDICTION_SCHED_FACTOR,
+    )
     lit_model, trainer = load_or_train_model(
         lit_model,
         tensorboard_graph_name=WORK_DIR.split("/")[-1],

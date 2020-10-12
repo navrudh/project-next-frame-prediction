@@ -20,6 +20,10 @@ from config.user_config import (
     SAVE_CFG_KEY_DATASET,
     PREDICTION_TRAINER_KWARGS,
     PREDICTION_BATCH_SIZE,
+    PREDICTION_LR,
+    PREDICTION_DECAY,
+    PREDICTION_PATIENCE,
+    PREDICTION_SCHED_FACTOR,
 )
 from config.user_config import (
     UCF101_ANNO_PATH,
@@ -50,11 +54,21 @@ def rescale_tensor(x):
 
 class UCF101VideoPredictionLitModel(LightningModule):
     def __init__(
-        self, batch_size, image_dim: int = 224, lr: float = 0.0001, freeze_epochs=3,
+        self,
+        batch_size,
+        image_dim: int = 224,
+        lr: float = 0.0001,
+        wt_decay=1e-5,
+        sched_patience=3,
+        sched_factor=0.1,
+        freeze_epochs=3,
     ):
         super().__init__()
         self.batch_size = batch_size
         self.lr = lr
+        self.wt_decay = wt_decay
+        self.sched_patience = sched_patience
+        self.sched_factor = sched_factor
         self.image_dim = image_dim
         self.freeze_epochs = freeze_epochs
 
@@ -119,16 +133,22 @@ class UCF101VideoPredictionLitModel(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.RMSprop(
-            self.model.parameters(), lr=self.hparams.lr, weight_decay=1e-5
+            self.model.parameters(),
+            lr=self.hparams.lr,
+            weight_decay=self.hparams.wt_decay,
         )
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=3, factor=0.5
+            optimizer,
+            patience=self.hparams.sched_patience,
+            factor=self.hparams.sched_factor,
         )
         return [optimizer], [scheduler]
 
     def predict_frame(self, batch, batch_nb):
         x, y = batch
-        # pick 5 frames, first 3 are seeds, then predict next 3
+        # pick 6 frames, first 3 are seeds, last 3 are targets
+        x = x[:, :6, :, :, :]
+
         b, t, c, w, h = x.shape
         n_predicted = 3
         t -= n_predicted
@@ -136,22 +156,24 @@ class UCF101VideoPredictionLitModel(LightningModule):
         input_frames = x[:, :t, :, :, :]
         predicted_frames = []
 
+        loss = 0
         hiddens = None
-        for i in range(n_predicted):
-
+        for i in range(1, n_predicted + 1):
+            target_frame = x[:, t + i - 1, :, :, :]
             pred, hiddens = self.forward(input_frames, hiddens)
-            last_predicted_frame = pred.view(b, t, *pred.shape[-3:])[:, -1:, :, :, :]
+            last_predicted_frame = pred.view(b, -1, *pred.shape[-3:])[:, -1:, :, :, :]
 
-            if i < (n_predicted - 1):
+            loss += self.criterion(
+                F.max_pool2d(target_frame.view(-1, c, w, h), 2,),
+                last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:]),
+            )
+
+            if i < n_predicted:
                 upscaled_pred_frame = double_resolution(
                     last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:])
                 )
                 input_frames = torch.cat(
-                    [
-                        input_frames[:, : t - 1, :, :, :],
-                        upscaled_pred_frame.reshape(b, 1, c, w, h),
-                    ],
-                    dim=1,
+                    [input_frames, upscaled_pred_frame.reshape(b, 1, c, w, h),], dim=1,
                 ).detach_()
 
             predicted_frames.append(last_predicted_frame)
@@ -358,7 +380,13 @@ if __name__ == "__main__":
     # ucf101_dm.setup("test")
     additional_config = {SAVE_CFG_KEY_DATASET: "ucf101"}
     save_config(additional_config)
-    lit_model = UCF101VideoPredictionLitModel(batch_size=PREDICTION_BATCH_SIZE)
+    lit_model = UCF101VideoPredictionLitModel(
+        batch_size=PREDICTION_BATCH_SIZE,
+        lr=PREDICTION_LR,
+        wt_decay=PREDICTION_DECAY,
+        sched_patience=PREDICTION_PATIENCE,
+        sched_factor=PREDICTION_SCHED_FACTOR,
+    )
     lit_model, trainer = load_or_train_model(
         lit_model,
         tensorboard_graph_name=WORK_DIR.split("/")[-1],

@@ -12,13 +12,17 @@
     "n-balls": 3,
     "timesteps": 128
   },
-  "workdir": "/media/navrudh/Data/models/vision-classification/bb-2",
+  "workdir": "/media/navrudh/Data/models/vision-classification/bb-in-loss-mod-1",
   "prediction": {
     "batch_size": 1,
+    "learning_rate": 0.0001,
+    "weight_decay": 1e-5,
+    "sched_patience": 5,
+    "sched_factor": 0.1,
     "trainer_args": {
       "max_epochs": 20,
       "gradient_clip_val": 0.25,
-      "accumulate_grad_batches": 2,
+      "accumulate_grad_batches": 1,
       "gpus": 1
     }
   },
