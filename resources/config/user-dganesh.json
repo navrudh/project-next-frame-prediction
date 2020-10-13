@@ -12,17 +12,17 @@
     "timesteps": 128,
     "train-size": 2000
   },
-  "workdir": "/home/IAIS/dganesh/models/vision-classification/ucf101-bn-gc-on-clone",
+  "workdir": "/home/IAIS/dganesh/models/vision-classification/ucf101-bn-64-1",
   "prediction": {
-    "model_img_h": 224,
-    "batch_size": 2,
+    "model_img_h": 64,
+    "batch_size": 48,
     "learning_rate": 0.0001,
     "weight_decay": 1e-5,
     "sched_patience": 5,
     "sched_factor": 0.1,
     "resnet_unfreeze_after_epoch": 4,
     "trainer_args": {
-      "max_epochs": 100,
+      "max_epochs": 1500,
       "gradient_clip_val": 0.5,
       "accumulate_grad_batches": 1,
       "gpus": -1,
