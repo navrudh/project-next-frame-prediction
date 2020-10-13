@@ -103,7 +103,7 @@ ucf101_video_augmentation = torchvision.transforms.Compose(
         ),
         torchvision.transforms.RandomChoice(
             [
-                torchvision.transforms.Resize((PREDICTION_MODEL_H)),
+                torchvision.transforms.Resize((PREDICTION_MODEL_H, PREDICTION_MODEL_H)),
                 torchvision.transforms.RandomResizedCrop(
                     PREDICTION_MODEL_H, scale=(0.33, 1.0)
                 ),

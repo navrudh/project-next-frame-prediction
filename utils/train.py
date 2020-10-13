@@ -22,9 +22,10 @@ def collate_bouncing_balls(batch):
     return torch.utils.data.dataloader.default_collate(filtered_batch)
 
 
-rescale_resolution = lambda input, size: nn.functional.interpolate(
-    input, size=size, mode="bilinear", align_corners=True
-)
+def rescale_resolution(input, size):
+    return nn.functional.interpolate(
+        input, size=(size, size), mode="bilinear", align_corners=True
+    )
 
 
 def load_model(clazz, **kwargs):
