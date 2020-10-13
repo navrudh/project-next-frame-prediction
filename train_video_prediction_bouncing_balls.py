@@ -12,7 +12,9 @@ from config.user_config import (
     PREDICTION_DECAY,
     PREDICTION_PATIENCE,
     PREDICTION_SCHED_FACTOR,
-    PREDICTION_MODEL_H, BB_TRAIN_SIZE,
+    PREDICTION_MODEL_H,
+    BB_TRAIN_SIZE,
+    PREDICTION_RESNET_UNFREEZE_EPOCH,
 )
 from config.user_config import WORK_DIR
 from dataset.bouncing_balls import BouncingBalls
@@ -80,6 +82,7 @@ if __name__ == "__main__":
         wt_decay=PREDICTION_DECAY,
         sched_patience=PREDICTION_PATIENCE,
         sched_factor=PREDICTION_SCHED_FACTOR,
+        freeze_epochs=PREDICTION_RESNET_UNFREEZE_EPOCH,
     )
     lit_model, trainer = load_or_train_model(
         lit_model,

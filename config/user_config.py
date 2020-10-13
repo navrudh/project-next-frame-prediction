@@ -52,6 +52,7 @@ PREDICTION_PATIENCE = config["prediction"]["sched_patience"]
 PREDICTION_SCHED_FACTOR = config["prediction"]["sched_factor"]
 PREDICTION_TRAINER_KWARGS = config["prediction"]["trainer_args"]
 PREDICTION_MODEL_H = config["prediction"]["model_img_h"]
+PREDICTION_RESNET_UNFREEZE_EPOCH = config["prediction"]["resnet_unfreeze_after_epoch"]
 
 # Classification Config Vars
 CLASSIFICATION_DATASET_PATH = WORK_DIR + "/classification/tensors"

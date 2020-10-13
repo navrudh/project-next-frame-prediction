@@ -4,7 +4,9 @@ from torch.utils.data.dataloader import DataLoader
 from config.user_config import (
     BB_TIMESTEPS,
     BB_NBALLS,
-    DATALOADER_WORKERS, BB_TRAIN_SIZE, PREDICTION_MODEL_H,
+    DATALOADER_WORKERS,
+    BB_TRAIN_SIZE,
+    PREDICTION_MODEL_H,
 )
 from dataset.bouncing_balls import BouncingBalls
 

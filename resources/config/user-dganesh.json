@@ -20,9 +20,10 @@
     "weight_decay": 1e-5,
     "sched_patience": 5,
     "sched_factor": 0.1,
+    "resnet_unfreeze_after_epoch": 4,
     "trainer_args": {
       "max_epochs": 100,
-      "gradient_clip_val": 0.25,
+      "gradient_clip_val": 0.5,
       "accumulate_grad_batches": 1,
       "gpus": -1,
       "distributed_backend": "ddp"

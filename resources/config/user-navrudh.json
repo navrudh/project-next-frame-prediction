@@ -10,19 +10,20 @@
   "bouncing-balls": {
     "n-balls": 3,
     "timesteps": 128,
-    "train-size": 2000
+    "train-size": 500
   },
-  "workdir": "/media/navrudh/Data/models/vision-classification/bb-in-loss-mod-fix-2",
+  "workdir": "/media/navrudh/Data/models/vision-classification/bb-bn-s-1",
   "prediction": {
     "model_img_h": 64,
-    "batch_size": 16,
+    "batch_size": 24,
     "learning_rate": 0.0001,
     "weight_decay": 1e-5,
     "sched_patience": 5,
     "sched_factor": 0.1,
+    "resnet_unfreeze_after_epoch": 4,
     "trainer_args": {
-      "max_epochs": 50,
-      "gradient_clip_val": 0.25,
+      "max_epochs": 150,
+      "gradient_clip_val": 0.5,
       "accumulate_grad_batches": 1,
       "gpus": 1
     }
