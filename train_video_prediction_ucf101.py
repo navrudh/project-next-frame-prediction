@@ -39,7 +39,7 @@ from transforms.video import (
     augment_ucf101_video_frames,
 )
 from utils.function import get_kwargs
-from utils.train import collate_ucf101, double_resolution
+from utils.train import collate_ucf101, rescale_resolution
 
 
 def order_video_image_dimensions(x):
@@ -166,15 +166,16 @@ class UCF101VideoPredictionLitModel(LightningModule):
             last_predicted_frame = pred.view(b, -1, *pred.shape[-3:])[:, -1:, :, :, :]
 
             loss += self.criterion(
-                F.max_pool2d(target_frame.view(-1, c, w, h), 2,),
+                rescale_resolution(target_frame.view(-1, c, w, h), size=pred.shape[-1]),
                 last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:]).clone(),
             )
 
             if i < n_predicted:
-                upscaled_pred_frame = double_resolution(
+                upscaled_pred_frame = rescale_resolution(
                     last_predicted_frame.view(
                         -1, *last_predicted_frame.shape[-3:]
-                    ).detach()
+                    ).detach(),
+                    size=PREDICTION_MODEL_H,
                 )
                 input_frames = torch.cat(
                     [
@@ -191,7 +192,7 @@ class UCF101VideoPredictionLitModel(LightningModule):
 
         inp = x[:, :6, :, :, :]
         inp = inp.reshape(-1, 3, self.image_dim, self.image_dim)
-        inp = F.max_pool2d(inp, 2)
+        inp = rescale_resolution(inp, size=pred3.shape[-1])
 
         pred6 = inp.view(-1, 6, *inp.shape[-3:]).detach().clone()
         pred6[:, -3:, :, :, :] = pred3.view(-1, 3, *pred3.shape[-3:])

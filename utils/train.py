@@ -2,7 +2,7 @@ import os
 import sys
 
 import torch
-from torch.nn import Upsample
+import torch.nn as nn
 from torch.utils.data.dataloader import default_collate
 
 from config.user_config import PREDICTION_MODEL_CHECKPOINT
@@ -22,7 +22,9 @@ def collate_bouncing_balls(batch):
     return torch.utils.data.dataloader.default_collate(filtered_batch)
 
 
-double_resolution = Upsample(scale_factor=2, mode="bilinear", align_corners=True)
+rescale_resolution = lambda input, size: nn.functional.interpolate(
+    input, size=size, mode="bilinear", align_corners=True
+)
 
 
 def load_model(clazz, **kwargs):
