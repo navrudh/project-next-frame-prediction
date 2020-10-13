@@ -24,6 +24,7 @@ from config.user_config import (
     PREDICTION_DECAY,
     PREDICTION_PATIENCE,
     PREDICTION_SCHED_FACTOR,
+    PREDICTION_MODEL_H,
 )
 from config.user_config import (
     UCF101_ANNO_PATH,
@@ -49,7 +50,7 @@ def image_int_to_float(x):
 
 
 def rescale_tensor(x):
-    return F.interpolate(x, (224, 224))
+    return F.interpolate(x, (PREDICTION_MODEL_H, PREDICTION_MODEL_H))
 
 
 class UCF101VideoPredictionLitModel(LightningModule):
@@ -165,16 +166,22 @@ class UCF101VideoPredictionLitModel(LightningModule):
 
             loss += self.criterion(
                 F.max_pool2d(target_frame.view(-1, c, w, h), 2,),
-                last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:]),
+                last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:]).clone(),
             )
 
             if i < n_predicted:
                 upscaled_pred_frame = double_resolution(
-                    last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:])
+                    last_predicted_frame.view(
+                        -1, *last_predicted_frame.shape[-3:]
+                    ).detach()
                 )
                 input_frames = torch.cat(
-                    [input_frames, upscaled_pred_frame.reshape(b, 1, c, w, h),], dim=1,
-                ).detach_()
+                    [
+                        input_frames[:, -t + 1 :, :, :, :],
+                        upscaled_pred_frame.reshape(b, 1, c, w, h),
+                    ],
+                    dim=1,
+                ).detach()
 
             predicted_frames.append(last_predicted_frame)
 
@@ -269,7 +276,12 @@ class UCF101VideoPredictionLitModel(LightningModule):
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         tensorboard_logs = {"val_loss": avg_loss}
-        return {"avg_val_loss": avg_loss, "log": tensorboard_logs}
+        tqdm_dict = {"val_loss": avg_loss}
+        return {
+            "avg_val_loss": avg_loss,
+            "progress_bar": tqdm_dict,
+            "log": tensorboard_logs,
+        }
 
     def on_epoch_start(self):
         if self.current_epoch == self.freeze_epochs:
@@ -377,6 +389,7 @@ if __name__ == "__main__":
     additional_config = {SAVE_CFG_KEY_DATASET: "ucf101"}
     save_config(additional_config)
     lit_model = UCF101VideoPredictionLitModel(
+        image_dim=PREDICTION_MODEL_H,
         batch_size=PREDICTION_BATCH_SIZE,
         lr=PREDICTION_LR,
         wt_decay=PREDICTION_DECAY,

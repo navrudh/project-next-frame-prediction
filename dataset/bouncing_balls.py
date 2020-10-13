@@ -133,8 +133,8 @@ def bounce_vec(res, n=2, steps=128, r=None, m=None):
     return v
 
 
-def sample_sequence_mat(sequence, step=3, output_frames=6):
-    startIdx = sequence.shape[0] // 2
+def sample_sequence_mat(sequence, step=5, output_frames=6):
+    startIdx = sequence.shape[0] // 3
     stopIdx = startIdx + step * output_frames + 1
     # if stopIdx < sequence.shape[0]:
     new_sequence = sequence[startIdx:stopIdx:step]

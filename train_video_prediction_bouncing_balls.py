@@ -2,7 +2,6 @@ from torch.utils.data.dataloader import DataLoader
 from torchvision import transforms
 
 from config.user_config import (
-    BB_SIZE,
     BB_TIMESTEPS,
     BB_NBALLS,
     save_config,
@@ -13,6 +12,7 @@ from config.user_config import (
     PREDICTION_DECAY,
     PREDICTION_PATIENCE,
     PREDICTION_SCHED_FACTOR,
+    PREDICTION_MODEL_H, BB_TRAIN_SIZE,
 )
 from config.user_config import WORK_DIR
 from dataset.bouncing_balls import BouncingBalls
@@ -28,21 +28,21 @@ class BouncingBallsVideoPredictionLitModel(UCF101VideoPredictionLitModel):
     def dataset_init(self, stage):
         if stage == "train" and not self.train_dataset:
             self.train_dataset = BouncingBalls(
-                size=BB_SIZE,
+                size=PREDICTION_MODEL_H,
                 timesteps=BB_TIMESTEPS,
                 n_balls=BB_NBALLS,
                 mode="train",
-                train_size=500,
+                train_size=BB_TRAIN_SIZE,
                 transform=transforms.Lambda(augment_bouncing_balls_video_frames),
             )
 
         if stage == "val" and not self.val_dataset:
             self.val_dataset = BouncingBalls(
-                size=BB_SIZE,
+                size=PREDICTION_MODEL_H,
                 timesteps=BB_TIMESTEPS,
                 n_balls=BB_NBALLS,
                 mode="val",
-                train_size=500,
+                train_size=BB_TRAIN_SIZE,
                 # output_frames=6,
             )
 
@@ -74,6 +74,7 @@ if __name__ == "__main__":
     additional_config = {SAVE_CFG_KEY_DATASET: "bouncing-balls"}
     save_config(additional_config)
     lit_model = BouncingBallsVideoPredictionLitModel(
+        image_dim=PREDICTION_MODEL_H,
         batch_size=PREDICTION_BATCH_SIZE,
         lr=PREDICTION_LR,
         wt_decay=PREDICTION_DECAY,

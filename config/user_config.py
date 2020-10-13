@@ -28,9 +28,9 @@ UCF101_ANNO_PATH = (
 UCF101_WORKERS = config["ucf101"]["workers"]
 
 # Bouncing Balls
-BB_SIZE = config["bouncing-balls"]["size"]
 BB_NBALLS = config["bouncing-balls"]["n-balls"]
 BB_TIMESTEPS = config["bouncing-balls"]["timesteps"]
+BB_TRAIN_SIZE = config["bouncing-balls"]["train-size"]
 
 # Dataloader Config Vars
 DATALOADER_WORKERS = config["dataloader"]["workers"]
@@ -51,6 +51,7 @@ PREDICTION_DECAY = config["prediction"]["weight_decay"]
 PREDICTION_PATIENCE = config["prediction"]["sched_patience"]
 PREDICTION_SCHED_FACTOR = config["prediction"]["sched_factor"]
 PREDICTION_TRAINER_KWARGS = config["prediction"]["trainer_args"]
+PREDICTION_MODEL_H = config["prediction"]["model_img_h"]
 
 # Classification Config Vars
 CLASSIFICATION_DATASET_PATH = WORK_DIR + "/classification/tensors"

@@ -86,7 +86,7 @@ class DecoderBlock(nn.Module):
     def __init__(self, in_channels: int, batch_norm: bool = True):
         super().__init__()
         block = []
-        block.append(nn.LeakyReLU(negative_slope=0.1))
+        block.append(nn.ReLU())
         if batch_norm:
             block.append(nn.BatchNorm2d(in_channels))
         block.extend(

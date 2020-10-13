@@ -7,6 +7,8 @@ import torchvision
 from pytorch_lightning import seed_everything
 from torch import Tensor
 
+from config.user_config import PREDICTION_MODEL_H
+
 
 class RandomFrameRate(torch.nn.Module):
     """Pick frames equally distant from each other as per the out_len
@@ -101,9 +103,11 @@ ucf101_video_augmentation = torchvision.transforms.Compose(
         ),
         torchvision.transforms.RandomChoice(
             [
-                torchvision.transforms.Resize((224, 224)),
-                torchvision.transforms.RandomResizedCrop(224, scale=(0.33, 1.0)),
-                torchvision.transforms.RandomCrop(224),
+                torchvision.transforms.Resize((PREDICTION_MODEL_H)),
+                torchvision.transforms.RandomResizedCrop(
+                    PREDICTION_MODEL_H, scale=(0.33, 1.0)
+                ),
+                torchvision.transforms.RandomCrop(PREDICTION_MODEL_H),
             ]
         ),
         torchvision.transforms.ToTensor(),
@@ -118,7 +122,7 @@ bb_video_augmentation = torchvision.transforms.Compose(
         torchvision.transforms.ColorJitter(
             brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
         ),
-        torchvision.transforms.Resize((224, 224)),
+        torchvision.transforms.Resize((PREDICTION_MODEL_H, PREDICTION_MODEL_H)),
         torchvision.transforms.ToTensor(),
     ]
 )

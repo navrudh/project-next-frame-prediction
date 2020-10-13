@@ -2,10 +2,9 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 
 from config.user_config import (
-    BB_SIZE,
     BB_TIMESTEPS,
     BB_NBALLS,
-    DATALOADER_WORKERS,
+    DATALOADER_WORKERS, BB_TRAIN_SIZE, PREDICTION_MODEL_H,
 )
 from dataset.bouncing_balls import BouncingBalls
 
@@ -19,20 +18,20 @@ class BouncingBallsVideoDataModule(LightningDataModule):
 
         if stage == "fit" or stage is None:
             self.train_dataset = BouncingBalls(
-                size=BB_SIZE,
+                size=PREDICTION_MODEL_H,
                 timesteps=BB_TIMESTEPS,
                 n_balls=BB_NBALLS,
                 mode="train",
-                train_size=2000,
+                train_size=BB_TRAIN_SIZE,
             )
 
         if stage == "test" or stage is None:
             self.val_dataset = BouncingBalls(
-                size=BB_SIZE,
+                size=PREDICTION_MODEL_H,
                 timesteps=BB_TIMESTEPS,
                 n_balls=BB_NBALLS,
                 mode="val",
-                train_size=2000,
+                train_size=BB_TRAIN_SIZE,
             )
 
     def train_dataloader(self):

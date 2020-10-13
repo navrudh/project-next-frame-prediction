@@ -8,12 +8,13 @@
     "workers": 7
   },
   "bouncing-balls": {
-    "size": 224,
     "n-balls": 3,
-    "timesteps": 128
+    "timesteps": 128,
+    "train-size": 2000
   },
   "workdir": "/home/IAIS/dganesh/models/vision-classification/ucf101-bn-gc-on-clone",
   "prediction": {
+    "model_img_h": 224,
     "batch_size": 2,
     "learning_rate": 0.0001,
     "weight_decay": 1e-5,
