@@ -144,7 +144,7 @@ class UCF101VideoPredictionLitModel(LightningModule):
             patience=self.hparams.sched_patience,
             factor=self.hparams.sched_factor,
         )
-        return [optimizer], [scheduler]
+        return optimizer
 
     def predict_frame(self, batch, batch_nb):
         x, y = batch
