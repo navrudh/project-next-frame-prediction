@@ -18,6 +18,7 @@
     "batch_size": 64,
     "learning_rate": 0.0001,
     "weight_decay": 1e-5,
+    "momentum": 0.9,
     "sched_patience": 5,
     "sched_factor": 0.1,
     "resnet_unfreeze_after_epoch": 4,

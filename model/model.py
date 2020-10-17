@@ -5,6 +5,7 @@ import torchvision
 from torch import nn
 
 from model.block import LatentBlock, DecoderBlock
+from utils.train import rescale_resolution
 
 
 class Resnet18(nn.Module):
@@ -40,9 +41,10 @@ class Resnet18(nn.Module):
 
 
 class SelfSupervisedVideoPredictionModel(nn.Module):
-    def __init__(self, latent_block_dims: List[int]):
+    def __init__(self, latent_block_dims: List[int], seed_frames):
         super().__init__()
         hidden_dims = [64, 64, 128, 256]
+        self.seed_frames = seed_frames
         self.encoder = Resnet18()
         self.latent_block_0 = LatentBlock(
             input_dim=hidden_dims[0], input_sz=latent_block_dims[0],
@@ -80,47 +82,58 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
             self.decoder_block_5,
         )
 
-    def forward(self, x, hidden=None, pooling_out_size=(1, 1)):
+    def forward(self, x, pooling_out_size=(1, 1)):
         # print("model.forward")
         b, t, c, w, h = x.shape
+        x = x.permute(1, 0, 2, 3, 4)
 
-        # 1. ENCODER
-        encoder_outputs = self.encoder(x.reshape(-1, c, w, h))
-
-        # 2. INTERMEDIATE
-        decoder_inputs = []
-        if hidden is None:
-            hidden = [None] * 4
-        for idx, block in enumerate(self.latent_blocks):
-            inp = encoder_outputs[idx]
-            outputs, hidden[idx] = block.forward(
-                inp.view(b, t, *inp.shape[-3:]), hidden=hidden[idx]
-            )
-            decoder_inputs.append(tuple(outputs))
-
-        # if test:
-        #     return torch.cat(
-        #         tuple(
-        #             nn.functional.adaptive_avg_pool2d(
-        #                 torch.cat(lb, dim=1), pooling_out_size
-        #             )
-        #             for lb in decoder_inputs
-        #         ),
-        #         dim=1,
-        #     )
-
-        decoder_inputs.append(encoder_outputs[4])
-
-        # 3. DECODER
-        output = None
-        for dec_inp, dec_block in zip(reversed(decoder_inputs), self.decoder_blocks):
-            if output is not None:
-                output = torch.cat(dec_inp + (output,), dim=1)
+        # first frame is copied
+        predictions = [x[0]]
+        hidden = [None] * len(self.latent_blocks)
+        for tidx, time_batch in enumerate(x[:-1]):
+            if tidx < self.seed_frames:
+                encoder_input = time_batch
             else:
-                output = dec_inp
-            output = dec_block(output)
+                encoder_input = predictions[-1]
 
-        return torch.sigmoid_(output), hidden
+            # 1. ENCODER
+            encoder_outputs = self.encoder(encoder_input)
+
+            # 2. RECURRENT CONVOLUTIONAL BLOCKS
+            decoder_inputs = []
+            for idx, block in enumerate(self.latent_blocks):
+                inp = encoder_outputs[idx]
+                outputs, hidden[idx] = block.forward(inp, hidden=hidden[idx])
+                decoder_inputs.append(tuple(outputs))
+
+            # if test:
+            #     return torch.cat(
+            #         tuple(
+            #             nn.functional.adaptive_avg_pool2d(
+            #                 torch.cat(lb, dim=1), pooling_out_size
+            #             )
+            #             for lb in decoder_inputs
+            #         ),
+            #         dim=1,
+            #     )
+
+            decoder_inputs.append(encoder_outputs[4])
+
+            # 3. DECODER
+            output = None
+            for dec_inp, dec_block in zip(
+                reversed(decoder_inputs), self.decoder_blocks
+            ):
+                if output is not None:
+                    output = torch.cat(dec_inp + (output,), dim=1)
+                else:
+                    output = dec_inp
+                output = dec_block(output)
+
+            pred = rescale_resolution(torch.sigmoid_(output), size=w)
+            predictions.append(pred)
+        predictions = torch.stack(predictions).permute(1, 0, 2, 3, 4)
+        return predictions, hidden
 
     def freeze_encoder(self):
         for param in self.encoder.parameters():

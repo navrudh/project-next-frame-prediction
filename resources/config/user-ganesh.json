@@ -10,20 +10,21 @@
   "bouncing-balls": {
     "n-balls": 3,
     "timesteps": 128,
-    "train-size": 2000
+    "train-size": 500
   },
-  "workdir": "/home/user/ganesh/models/vision-classification/bb-in-l-3",
+  "workdir": "/home/user/ganesh/models/vision-classification/bb-reimpl-64-13",
   "prediction": {
     "model_img_h": 64,
     "model_img_w": 64,
-    "batch_size": 48,
-    "learning_rate": 0.0001,
+    "batch_size": 64,
+    "learning_rate": 0.001,
     "weight_decay": 1e-5,
+    "momentum": 0,
     "sched_patience": 10,
     "sched_factor": 0.1,
     "resnet_unfreeze_after_epoch": 4,
     "trainer_args": {
-      "max_epochs": 250,
+      "max_epochs": 1300,
       "gradient_clip_val": 0.5,
       "accumulate_grad_batches": 1,
       "gpus": 1

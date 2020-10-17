@@ -26,6 +26,7 @@ from config.user_config import (
     PREDICTION_SCHED_FACTOR,
     PREDICTION_MODEL_H,
     PREDICTION_RESNET_UNFREEZE_EPOCH,
+    PREDICTION_MOMENTUM,
 )
 from config.user_config import (
     UCF101_ANNO_PATH,
@@ -39,7 +40,7 @@ from transforms.video import (
     augment_ucf101_video_frames,
 )
 from utils.function import get_kwargs
-from utils.train import collate_ucf101, rescale_resolution
+from utils.train import collate_ucf101
 
 
 def order_video_image_dimensions(x):
@@ -56,14 +57,15 @@ def rescale_tensor(x):
 
 class UCF101VideoPredictionLitModel(LightningModule):
     def __init__(
-        self,
-        batch_size,
-        image_dim: int = 224,
-        lr: float = 0.0001,
-        wt_decay=1e-5,
-        sched_patience=3,
-        sched_factor=0.1,
-        freeze_epochs=3,
+            self,
+            batch_size,
+            image_dim: int = 224,
+            lr: float = 0.0001,
+            wt_decay=1e-5,
+            momentum=0.9,
+            sched_patience=3,
+            sched_factor=0.1,
+            freeze_epochs=3,
     ):
         super().__init__()
         self.batch_size = batch_size
@@ -73,11 +75,13 @@ class UCF101VideoPredictionLitModel(LightningModule):
         self.sched_factor = sched_factor
         self.image_dim = image_dim
         self.freeze_epochs = freeze_epochs
+        self.momentum = momentum
 
         self.save_hyperparameters()
 
         self.model = SelfSupervisedVideoPredictionModel(
             latent_block_dims=[self.image_dim // v for v in (2, 4, 8, 16)],
+            seed_frames=3,
         )
         self.model.freeze_encoder()
 
@@ -129,8 +133,8 @@ class UCF101VideoPredictionLitModel(LightningModule):
 
         return ssim_loss + l1_loss + l2_loss
 
-    def forward(self, x, hidden):
-        x, hidden = self.model.forward(x, hidden=hidden)
+    def forward(self, x):
+        x, hidden = self.model.forward(x)
         return x, hidden
 
     def configure_optimizers(self):
@@ -138,67 +142,30 @@ class UCF101VideoPredictionLitModel(LightningModule):
             self.model.parameters(),
             lr=self.hparams.lr,
             weight_decay=self.hparams.wt_decay,
+            momentum=self.hparams.momentum,
         )
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            patience=self.hparams.sched_patience,
-            factor=self.hparams.sched_factor,
-        )
+        # scheduler = torch.optim.lr_scheduler.LambdaLR(
+        #     optimizer, lr_lambda=lambda epoch: 0.0001 * (0.5 ** (epoch / 100)),
+        # )
         return optimizer
 
     def predict_frame(self, batch, batch_nb):
         x, y = batch
-        # pick 6 frames, first 3 are seeds, last 3 are targets
+        # pick 6 frames, first 3 are seeds (defined in model), last 3 are targets (calculated below)
         x = x[:, :6, :, :, :]
-
         b, t, c, w, h = x.shape
-        n_predicted = 3
-        t -= n_predicted
 
-        input_frames = x[:, :t, :, :, :]
-        predicted_frames = []
+        gradX = x
+        pred, hidden = self.forward(gradX)
 
-        loss = 0
-        hiddens = None
-        for i in range(1, n_predicted + 1):
-            target_frame = x[:, t + i - 1, :, :, :]
-            pred, hiddens = self.forward(input_frames, hiddens)
-            last_predicted_frame = pred.view(b, -1, *pred.shape[-3:])[:, -1:, :, :, :]
+        loss = self.criterion(
+            x[:, self.model.seed_frames:].detach().reshape(-1, c, w, h),
+            pred[:, self.model.seed_frames:].reshape(-1, c, w, h),
+        )
 
-            loss += self.criterion(
-                rescale_resolution(target_frame.view(-1, c, w, h), size=pred.shape[-1]),
-                last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:]).clone(),
-            )
-
-            if i < n_predicted:
-                upscaled_pred_frame = rescale_resolution(
-                    last_predicted_frame.view(
-                        -1, *last_predicted_frame.shape[-3:]
-                    ).detach(),
-                    size=PREDICTION_MODEL_H,
-                )
-                input_frames = torch.cat(
-                    [
-                        input_frames[:, -t + 1 :, :, :, :],
-                        upscaled_pred_frame.reshape(b, 1, c, w, h),
-                    ],
-                    dim=1,
-                ).detach()
-
-            predicted_frames.append(last_predicted_frame)
-
-        pred3 = torch.cat(predicted_frames, dim=1)
-        pred3 = pred3.view(-1, *pred3.shape[-3:])
-
-        inp = x[:, :6, :, :, :]
-        inp = inp.reshape(-1, 3, self.image_dim, self.image_dim)
-        inp = rescale_resolution(inp, size=pred3.shape[-1])
-
-        pred6 = inp.view(-1, 6, *inp.shape[-3:]).detach().clone()
-        pred6[:, -3:, :, :, :] = pred3.view(-1, 3, *pred3.shape[-3:])
-        pred6 = pred6.view(-1, *pred6.shape[-3:])
-
-        return inp, pred6, loss
+        inp = x.reshape(-1, c, w, h)
+        pred = pred.reshape(-1, c, w, h)
+        return inp, pred, loss
 
     def dataset_init(self, stage):
         if stage == "train" and not self.train_dataset:
@@ -251,16 +218,16 @@ class UCF101VideoPredictionLitModel(LightningModule):
 
     def training_step(self, batch, batch_nb):
         inp, pred, loss = self.predict_frame(batch, batch_nb)
-        if batch_nb % 100 == 0:
+        if batch_nb == 0:
             self.logger.experiment.add_image(
                 "input",
                 torchvision.utils.make_grid(inp, normalize=True, nrow=6),
-                self.global_step,
+                self.current_epoch,
             )
             self.logger.experiment.add_image(
                 "pred",
                 torchvision.utils.make_grid(pred, normalize=True, nrow=6),
-                self.global_step,
+                self.current_epoch,
             )
         tensorboard_logs = {"train_loss": loss}
         return {"loss": loss, "log": tensorboard_logs}
@@ -271,7 +238,7 @@ class UCF101VideoPredictionLitModel(LightningModule):
             self.logger.experiment.add_image(
                 "val_pred",
                 torchvision.utils.make_grid(pred, normalize=True, nrow=6),
-                self.global_step,
+                self.current_epoch,
             )
         return {"val_loss": loss}
 
@@ -303,13 +270,13 @@ lr_logger = LearningRateLogger(logging_interval="epoch")
 
 
 def load_or_train_model(
-    lit_model: LightningModule,
-    tensorboard_graph_name: str = None,
-    save=True,
-    resume=True,
-    validation=True,
-    gif_mode=False,
-    profiler=None,
+        lit_model: LightningModule,
+        tensorboard_graph_name: str = None,
+        save=True,
+        resume=True,
+        validation=True,
+        gif_mode=False,
+        profiler=None,
 ):
     logger = False
     if profiler:
@@ -395,6 +362,7 @@ if __name__ == "__main__":
         batch_size=PREDICTION_BATCH_SIZE,
         lr=PREDICTION_LR,
         wt_decay=PREDICTION_DECAY,
+        momentum=PREDICTION_MOMENTUM,
         sched_patience=PREDICTION_PATIENCE,
         sched_factor=PREDICTION_SCHED_FACTOR,
         freeze_epochs=PREDICTION_RESNET_UNFREEZE_EPOCH,

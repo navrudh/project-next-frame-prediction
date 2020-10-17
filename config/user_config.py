@@ -48,6 +48,7 @@ PREDICTION_OUTPUT_DIR = WORK_DIR + "/generated"
 PREDICTION_BATCH_SIZE = config["prediction"]["batch_size"]
 PREDICTION_LR = config["prediction"]["learning_rate"]
 PREDICTION_DECAY = config["prediction"]["weight_decay"]
+PREDICTION_MOMENTUM = config["prediction"]["momentum"]
 PREDICTION_PATIENCE = config["prediction"]["sched_patience"]
 PREDICTION_SCHED_FACTOR = config["prediction"]["sched_factor"]
 PREDICTION_TRAINER_KWARGS = config["prediction"]["trainer_args"]

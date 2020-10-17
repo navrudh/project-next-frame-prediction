@@ -1,22 +1,21 @@
 from torch import nn
 
 from nn.conv import LocationAwareConv2d
-from nn.convgru import ConvGRU
+from nn.convgru import ConvGRUCell
 
 
 class LatentBlock(nn.Module):
     def __init__(
-        self,
-        input_dim: int,
-        input_sz: int,
-        location_aware: bool = False,
-        output_dim: int = 64,
+            self,
+            input_dim: int,
+            input_sz: int,
+            location_aware: bool = False,
+            output_dim: int = 64,
     ):
         super().__init__()
         self.input_dim = input_dim
         self.input_sz = input_sz
         self.output_dim = output_dim
-        self.lstm_dims = [output_dim]
 
         if location_aware:
             self.conv1x1 = LocationAwareConv2d(
@@ -32,53 +31,43 @@ class LatentBlock(nn.Module):
                 in_channels=input_dim, out_channels=output_dim, kernel_size=1
             )
 
-        self.convgru1 = ConvGRU(
+        self.convgru1 = ConvGRUCell(
             input_size=(input_sz, input_sz),
             input_dim=input_dim,
-            hidden_dim=self.lstm_dims,
-            num_layers=len(self.lstm_dims),
+            hidden_dim=self.output_dim,
             kernel_size=(3, 3),
         )
-        self.convgru2 = ConvGRU(
+        self.convgru2 = ConvGRUCell(
             input_size=(input_sz, input_sz),
             input_dim=input_dim,
-            hidden_dim=self.lstm_dims,
-            num_layers=len(self.lstm_dims),
+            hidden_dim=self.output_dim,
             kernel_size=(5, 5),
         )
-        self.convgru3 = ConvGRU(
+        self.convgru3 = ConvGRUCell(
             input_size=(input_sz, input_sz),
             input_dim=input_dim,
-            hidden_dim=self.lstm_dims,
-            num_layers=len(self.lstm_dims),
+            hidden_dim=self.output_dim,
             kernel_size=(7, 7),
         )
 
     def forward(self, x, hidden):
-        b, t, c, w, h = x.shape
-        x0 = self.conv1x1(x.clone().view(-1, c, w, h))
-
-        _x = x
+        b, c, w, h = x.shape
+        x0 = self.conv1x1(x)
 
         if hidden is None:
-            hidden_state_1 = self.convgru1.get_init_states(b)
-            hidden_state_2 = self.convgru2.get_init_states(b)
-            hidden_state_3 = self.convgru3.get_init_states(b)
+            hidden_state_1 = self.convgru1.init_hidden(b)
+            hidden_state_2 = self.convgru2.init_hidden(b)
+            hidden_state_3 = self.convgru3.init_hidden(b)
         else:
             hidden_state_1, hidden_state_2, hidden_state_3 = hidden
 
-        x1, hidden_state_1 = self.convgru1.forward(_x.clone(), hidden_state_1)
-        x2, hidden_state_2 = self.convgru2.forward(_x.clone(), hidden_state_2)
-        x3, hidden_state_3 = self.convgru3.forward(_x.clone(), hidden_state_3)
+        x1 = self.convgru1.forward(x, h_prev=hidden_state_1)
+        x2 = self.convgru2.forward(x, h_prev=hidden_state_2)
+        x3 = self.convgru3.forward(x, h_prev=hidden_state_3)
 
         return (
-            (
-                x0,
-                x1.reshape(-1, *x1.shape[-3:]),
-                x2.reshape(-1, *x2.shape[-3:]),
-                x3.reshape(-1, *x3.shape[-3:]),
-            ),
-            (hidden_state_1, hidden_state_2, hidden_state_3),
+            (x0, x1, x2, x3,),
+            (x1, x2, x3),
         )
 
 
