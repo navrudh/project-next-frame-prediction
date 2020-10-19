@@ -12,7 +12,7 @@
     "timesteps": 128,
     "train-size": 2000
   },
-  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-simple-pass-8-in-t",
+  "workdir": "/home/user/ganesh/models/vision-classification/ucf101-simple-pass-11-in-t",
   "prediction": {
     "model_img_h": 128,
     "model_img_w": 128,

@@ -12,7 +12,7 @@
     "timesteps": 128,
     "train-size": 2000
   },
-  "workdir": "/data/user/dganesh/models/vision-classification/ucf101-bn-64-1",
+  "workdir": "/data/user/dganesh/models/vision-classification/ucf101-in-relu-32b-128img-2",
   "prediction": {
     "model_img_h": 128,
     "batch_size": 32,

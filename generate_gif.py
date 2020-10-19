@@ -14,7 +14,7 @@ from dataset.bouncing_balls_video import BouncingBallsVideoDataModule
 from dataset.ucf101video import UCF101VideoDataModule
 from train_video_prediction_bouncing_balls import BouncingBallsVideoPredictionLitModel
 from train_video_prediction_ucf101 import UCF101VideoPredictionLitModel
-from utils.image import generate_gif, unnormalize_video_images
+from utils.image import generate_gif
 from utils.train import load_model
 
 OUTPUT_DIR = PREDICTION_OUTPUT_DIR
@@ -24,8 +24,6 @@ def get_inherited_gif_generator_class(BaseLitModel):
     class GifGenerator(BaseLitModel):
         def test_step(self, batch, batch_nb):
             inp, pred, loss, hidden = self.predict_frame(batch, batch_nb)
-            inp = unnormalize_video_images(inp)
-            pred = unnormalize_video_images(pred)
 
             # pred = double_resolution(pred)
 
