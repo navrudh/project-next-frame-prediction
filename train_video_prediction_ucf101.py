@@ -150,55 +150,71 @@ class UCF101VideoPredictionLitModel(LightningModule):
         x, y = batch
         # pick 6 frames, first 3 are seeds, last 3 are targets
         x = x[:, :6, :, :, :]
+        displayX = x.detach().clone()
+
+        n_seed_frames = 3
 
         b, t, c, w, h = x.shape
-        n_predicted = 3
-        t -= n_predicted
 
-        input_frames = x[:, :t, :, :, :]
         predicted_frames = []
 
-        loss = 0
-        hiddens = None
-        for i in range(1, n_predicted + 1):
-            target_frame = x[:, t + i - 1, :, :, :]
-            pred, hiddens = self.forward(input_frames, hiddens)
-            last_predicted_frame = pred.view(b, -1, *pred.shape[-3:])[:, -1:, :, :, :]
+        hidden = None
 
-            loss += self.criterion(
-                rescale_resolution(target_frame.view(-1, c, w, h), size=pred.shape[-1]),
-                last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:]).clone(),
-            )
-
-            if i < n_predicted:
-                upscaled_pred_frame = rescale_resolution(
-                    last_predicted_frame.view(
-                        -1, *last_predicted_frame.shape[-3:]
-                    ).detach(),
-                    size=PREDICTION_MODEL_H,
+        for frame_num in range(t - 1):
+            if frame_num < n_seed_frames:
+                input_frame = x[:, frame_num : frame_num + 1]
+            else:
+                input_frame = predicted_frames[-1]
+                input_frame = (
+                    rescale_resolution(
+                        input_frame.view(-1, *input_frame.shape[-3:]), size=h
+                    )
+                    .detach()
+                    .clone()
+                    .requires_grad_(True)
                 )
-                input_frames = torch.cat(
-                    [
-                        input_frames[:, -t + 1 :, :, :, :],
-                        upscaled_pred_frame.reshape(b, 1, c, w, h),
-                    ],
-                    dim=1,
-                ).detach()
+                input_frame = input_frame.view(b, -1, c, h, h)  # can make it w, h
 
+            pred, hidden = self.forward(input_frame, hidden)
+            last_predicted_frame = pred.view(b, -1, *pred.shape[-3:])[:, -1:, :, :, :]
             predicted_frames.append(last_predicted_frame)
 
-        pred3 = torch.cat(predicted_frames, dim=1)
-        pred3 = pred3.view(-1, *pred3.shape[-3:])
+        # loss += self.criterion(
+        #     rescale_resolution(target_frame.view(-1, c, w, h), size=pred.shape[-1]),
+        #     last_predicted_frame.view(-1, *last_predicted_frame.shape[-3:]).clone(),
+        # )
 
-        inp = x[:, :6, :, :, :]
+        pred5 = torch.cat(predicted_frames, dim=1)
+        pred3 = pred5[:, -n_seed_frames:]
+        pred3 = pred3.reshape(-1, *pred3.shape[-3:])
+
+        target3 = x[:, -n_seed_frames:, :, :, :]
+        target3 = (
+            rescale_resolution(
+                target3.reshape(-1, *target3.shape[-3:]), size=pred3.shape[-1]
+            )
+            .detach()
+            .clone()
+        )
+
+        loss = self.criterion(pred3, target3)
+
+        # for display: input
+        inp = displayX[:, :6, :, :, :]
         inp = inp.reshape(-1, 3, self.image_dim, self.image_dim)
-        inp = rescale_resolution(inp, size=pred3.shape[-1])
+        inp = rescale_resolution(inp, size=target3.shape[-1]).detach().clone()
+        pred6 = inp.detach().clone()
 
-        pred6 = inp.view(-1, 6, *inp.shape[-3:]).detach().clone()
-        pred6[:, -3:, :, :, :] = pred3.view(-1, 3, *pred3.shape[-3:])
+        inp = inp.view(b, -1, *inp.shape[-3:])
+        inp[:, -target3.shape[1] :, :, :, :] = target3.view(b, -1, *target3.shape[-3:])
+        inp = inp.view(-1, *inp.shape[-3:])
+
+        # for display: pred
+        pred6 = pred6.view(b, t, *pred6.shape[-3:])
+        pred6[:, -3:, :, :, :] = pred5.view(b, -1, *pred5.shape[-3:])[:, -3:, :, :, :]
         pred6 = pred6.view(-1, *pred6.shape[-3:])
 
-        return inp, pred6, loss
+        return inp, pred6, loss, hidden
 
     def dataset_init(self, stage):
         if stage == "train" and not self.train_dataset:
@@ -250,28 +266,28 @@ class UCF101VideoPredictionLitModel(LightningModule):
         )
 
     def training_step(self, batch, batch_nb):
-        inp, pred, loss = self.predict_frame(batch, batch_nb)
-        if batch_nb % 100 == 0:
+        inp, pred, loss, hidden = self.predict_frame(batch, batch_nb)
+        if batch_nb == 0:
             self.logger.experiment.add_image(
                 "input",
                 torchvision.utils.make_grid(inp, normalize=True, nrow=6),
-                self.global_step,
+                self.current_epoch,
             )
             self.logger.experiment.add_image(
                 "pred",
                 torchvision.utils.make_grid(pred, normalize=True, nrow=6),
-                self.global_step,
+                self.current_epoch,
             )
         tensorboard_logs = {"train_loss": loss}
         return {"loss": loss, "log": tensorboard_logs}
 
     def validation_step(self, batch, batch_nb):
-        inp, pred, loss = self.predict_frame(batch, batch_nb)
+        inp, pred, loss, hidden = self.predict_frame(batch, batch_nb)
         if batch_nb == 0:
             self.logger.experiment.add_image(
                 "val_pred",
                 torchvision.utils.make_grid(pred, normalize=True, nrow=6),
-                self.global_step,
+                self.current_epoch,
             )
         return {"val_loss": loss}
 

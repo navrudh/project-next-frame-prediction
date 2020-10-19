@@ -1,6 +1,5 @@
 import torch.nn.functional as F
 import torchvision.datasets.utils
-import torchvision.transforms.functional as TV_F
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
@@ -10,6 +9,7 @@ from config.user_config import (
     UCF101_ANNO_PATH,
     UCF101_WORKERS,
     DATALOADER_WORKERS,
+    PREDICTION_MODEL_H,
 )
 from utils.train import collate_ucf101
 
@@ -18,26 +18,12 @@ def order_video_image_dimensions(x):
     return x.permute(0, 3, 1, 2)
 
 
-def normalize_video_images(x):
-    for img in x:
-        TV_F.normalize(
-            img, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], inplace=True,
-        )
-    return x
+def image_int_to_float(x):
+    return x / 255.0
 
 
-def unnormalize_video_images(x):
-    for img in x:
-        TV_F.normalize(
-            img,
-            mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
-            std=[1 / 0.229, 1 / 0.224, 1 / 0.225],
-            inplace=True,
-        )
-    return x
-
-
-invert_transforms = transforms.Compose([transforms.Lambda(unnormalize_video_images)])
+def rescale_tensor(x):
+    return F.interpolate(x, (PREDICTION_MODEL_H, PREDICTION_MODEL_H))
 
 
 # Dataset:
@@ -49,16 +35,19 @@ class UCF101VideoDataModule(LightningDataModule):
         self.image_dim = image_dim
         self.fold = fold
 
-        self.train_transforms = self.test_transforms = transforms.Compose(
+        self.test_transforms = transforms.Compose(
             [
+                # adjust frames
+                # RestrictFrameRate(out_len=6),
                 # scale in [0, 1] of type float
-                transforms.Lambda(lambda x: x / 255.0),
+                transforms.Lambda(image_int_to_float),
                 # reshape into (T, C, H, W) for easier convolutions
                 transforms.Lambda(order_video_image_dimensions),
-                # normalize
+                # # normalize
                 # transforms.Lambda(normalize_video_images),
                 # rescale to the most common size
-                transforms.Lambda(lambda x: F.interpolate(x, (224, 224))),
+                transforms.Lambda(rescale_tensor),
+                # for half precision training
                 # transforms.Lambda(lambda x: x.half()),
             ]
         )
@@ -73,11 +62,11 @@ class UCF101VideoDataModule(LightningDataModule):
             self.train_dataset = datasets.UCF101(
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
-                frames_per_clip=12,
-                step_between_clips=100,
+                frames_per_clip=6,
+                step_between_clips=75,
                 num_workers=UCF101_WORKERS,
                 train=True,
-                transform=self.train_transforms,
+                transform=self.test_transforms,
                 fold=self.fold,
             )
 
@@ -86,7 +75,7 @@ class UCF101VideoDataModule(LightningDataModule):
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
                 frames_per_clip=6,
-                step_between_clips=100,
+                step_between_clips=75,
                 num_workers=UCF101_WORKERS,
                 train=False,
                 transform=self.test_transforms,
