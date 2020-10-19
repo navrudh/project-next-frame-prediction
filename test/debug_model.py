@@ -1,24 +1,32 @@
 import torch
 from pytorch_lightning.metrics import SSIM
-from torch import device as torch_device, cuda as torch_cuda
 
 from model.model import SelfSupervisedVideoPredictionModel
-
-device = torch_device("cuda:0" if torch_cuda.is_available() else "cpu")
 
 IMG_DIM = 224
 block_inp_dims = [IMG_DIM // v for v in (2, 4, 8, 16)]
 
 model = SelfSupervisedVideoPredictionModel(latent_block_dims=block_inp_dims)
-model = model.cuda()
 
 b = 2
 t = 3
-inp = torch.randn((b, t, 3, IMG_DIM, IMG_DIM)).to(device)
+inp = torch.randn((b, t, 3, IMG_DIM, IMG_DIM))
 _inp = inp.view(-1, 3, IMG_DIM, IMG_DIM)
 
 ## TRAIN
 pred, hidden = model.forward(inp, hidden=None)
+# print(type(hidden))
+# print(len(hidden))
+# print(type(hidden[0]))
+# print(len(hidden[0]))
+# print(type(hidden[0][0]))
+# print(len(hidden[0][0]))
+# print(type(hidden[0][1]))
+# print(len(hidden[0][1]))
+# print(type(hidden[0][0][0]))
+# print(hidden[0][0][0].shape)
+
+
 print(
     "TRAIN pred:", pred.shape, ", expected:", [b * t, 3, IMG_DIM // 2, IMG_DIM // 2],
 )

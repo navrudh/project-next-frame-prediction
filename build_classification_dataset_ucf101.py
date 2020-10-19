@@ -3,9 +3,10 @@ import shutil
 import uuid
 
 import torch
+import torch.nn as nn
 from pytorch_lightning import Trainer
 
-from config.user_config import CLASSIFICATION_DATASET_PATH
+from config.user_config import CLASSIFICATION_DATASET_PATH, PREDICTION_BATCH_SIZE
 from dataset.ucf101video import UCF101VideoDataModule
 from train_video_prediction_ucf101 import UCF101VideoPredictionLitModel
 from utils.cli import query_yes_no
@@ -14,11 +15,19 @@ from utils.train import load_model
 
 class ClassificationDatasetBuilder(UCF101VideoPredictionLitModel):
     def test_step(self, batch, batch_nb):
-        # Save Hidden Layers under batch numbers
+        inp, pred, loss, hidden = self.predict_frame(batch, batch_nb)
         x, y = batch
-        curr = x[:, :5, :, :, :]
-        curr = curr.reshape(-1, 3, self.image_dim, self.image_dim).contiguous()
-        convgru_hidden_states = self.model.forward(curr, test=True)
+
+        convgru_hidden_states = torch.cat(
+            tuple(
+                nn.functional.adaptive_avg_pool2d(
+                    torch.cat(tuple(gru[0] for gru in rcb), dim=1), (1, 1)
+                )
+                for rcb in hidden
+            ),
+            dim=1,
+        )
+
         dim = convgru_hidden_states.shape[0]
         convgru_hidden_states = torch.unbind(convgru_hidden_states)
         for i in range(dim):
@@ -50,8 +59,10 @@ def build_dataset(model, dataset_save_dir, dataloader):
 
 
 if __name__ == "__main__":
-    ucf101_dm = UCF101VideoDataModule(batch_size=8)
-    lit_model = load_model(ClassificationDatasetBuilder, batch_size=8)
+    ucf101_dm = UCF101VideoDataModule(batch_size=PREDICTION_BATCH_SIZE)
+    lit_model = load_model(
+        ClassificationDatasetBuilder, batch_size=PREDICTION_BATCH_SIZE
+    )
     lit_model.eval()
     ucf101_dm.setup("fit")
     build_dataset(
@@ -62,7 +73,7 @@ if __name__ == "__main__":
         dataloader=ucf101_dm.train_dataloader(),
     )
 
-    ucf101_dm = UCF101VideoDataModule(batch_size=8)
+    ucf101_dm = UCF101VideoDataModule(batch_size=PREDICTION_BATCH_SIZE)
     ucf101_dm.setup("test")
     build_dataset(
         lit_model,

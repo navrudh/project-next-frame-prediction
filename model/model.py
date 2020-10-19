@@ -80,7 +80,7 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
             self.decoder_block_5,
         )
 
-    def forward(self, x, hidden=None, pooling_out_size=(1, 1)):
+    def forward(self, x, hidden=None):
         # print("model.forward")
         b, t, c, w, h = x.shape
 
@@ -97,17 +97,6 @@ class SelfSupervisedVideoPredictionModel(nn.Module):
                 inp.view(b, t, *inp.shape[-3:]), hidden=hidden[idx]
             )
             decoder_inputs.append(tuple(outputs))
-
-        # if test:
-        #     return torch.cat(
-        #         tuple(
-        #             nn.functional.adaptive_avg_pool2d(
-        #                 torch.cat(lb, dim=1), pooling_out_size
-        #             )
-        #             for lb in decoder_inputs
-        #         ),
-        #         dim=1,
-        #     )
 
         decoder_inputs.append(encoder_outputs[4])
 

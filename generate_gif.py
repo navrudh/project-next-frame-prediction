@@ -8,12 +8,13 @@ from config.user_config import (
     PREDICTION_OUTPUT_DIR,
     load_saved_config,
     SAVE_CFG_KEY_DATASET,
+    PREDICTION_BATCH_SIZE,
 )
 from dataset.bouncing_balls_video import BouncingBallsVideoDataModule
 from dataset.ucf101video import UCF101VideoDataModule
 from train_video_prediction_bouncing_balls import BouncingBallsVideoPredictionLitModel
 from train_video_prediction_ucf101 import UCF101VideoPredictionLitModel
-from utils.image import generate_gif
+from utils.image import generate_gif, unnormalize_video_images
 from utils.train import load_model
 
 OUTPUT_DIR = PREDICTION_OUTPUT_DIR
@@ -22,7 +23,10 @@ OUTPUT_DIR = PREDICTION_OUTPUT_DIR
 def get_inherited_gif_generator_class(BaseLitModel):
     class GifGenerator(BaseLitModel):
         def test_step(self, batch, batch_nb):
-            inp, pred, loss = self.predict_frame(batch, batch_nb)
+            inp, pred, loss, hidden = self.predict_frame(batch, batch_nb)
+            inp = unnormalize_video_images(inp)
+            pred = unnormalize_video_images(pred)
+
             # pred = double_resolution(pred)
 
             # Undo transforms / fix colors
@@ -71,17 +75,17 @@ if __name__ == "__main__":
     print("Dataset:", dataset)
 
     if dataset == "ucf101":
-        datamodule = UCF101VideoDataModule(batch_size=4)
+        datamodule = UCF101VideoDataModule(batch_size=PREDICTION_BATCH_SIZE)
         lit_model = load_model(
             get_inherited_gif_generator_class(UCF101VideoPredictionLitModel),
-            batch_size=4,
+            batch_size=PREDICTION_BATCH_SIZE,
         )
 
     elif dataset == "bouncing-balls":
-        datamodule = BouncingBallsVideoDataModule(batch_size=4)
+        datamodule = BouncingBallsVideoDataModule(batch_size=PREDICTION_BATCH_SIZE)
         lit_model = load_model(
             get_inherited_gif_generator_class(BouncingBallsVideoPredictionLitModel),
-            batch_size=4,
+            batch_size=PREDICTION_BATCH_SIZE,
         )
 
     else:

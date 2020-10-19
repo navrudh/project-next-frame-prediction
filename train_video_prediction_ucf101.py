@@ -39,19 +39,13 @@ from transforms.video import (
     augment_ucf101_video_frames,
 )
 from utils.function import get_kwargs
+from utils.image import (
+    image_int_to_float,
+    order_video_image_dimensions,
+    rescale_tensor,
+    unnormalize_video_images,
+)
 from utils.train import collate_ucf101, rescale_resolution
-
-
-def order_video_image_dimensions(x):
-    return x.permute(0, 3, 1, 2)
-
-
-def image_int_to_float(x):
-    return x / 255.0
-
-
-def rescale_tensor(x):
-    return F.interpolate(x, (PREDICTION_MODEL_H, PREDICTION_MODEL_H))
 
 
 class UCF101VideoPredictionLitModel(LightningModule):
@@ -267,6 +261,9 @@ class UCF101VideoPredictionLitModel(LightningModule):
 
     def training_step(self, batch, batch_nb):
         inp, pred, loss, hidden = self.predict_frame(batch, batch_nb)
+        inp = unnormalize_video_images(inp)
+        pred = unnormalize_video_images(pred)
+
         if batch_nb == 0:
             self.logger.experiment.add_image(
                 "input",
@@ -283,6 +280,8 @@ class UCF101VideoPredictionLitModel(LightningModule):
 
     def validation_step(self, batch, batch_nb):
         inp, pred, loss, hidden = self.predict_frame(batch, batch_nb)
+        pred = unnormalize_video_images(pred)
+
         if batch_nb == 0:
             self.logger.experiment.add_image(
                 "val_pred",

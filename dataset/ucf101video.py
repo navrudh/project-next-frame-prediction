@@ -1,4 +1,3 @@
-import torch.nn.functional as F
 import torchvision.datasets.utils
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
@@ -9,21 +8,9 @@ from config.user_config import (
     UCF101_ANNO_PATH,
     UCF101_WORKERS,
     DATALOADER_WORKERS,
-    PREDICTION_MODEL_H,
 )
+from utils.image import image_int_to_float, order_video_image_dimensions, rescale_tensor
 from utils.train import collate_ucf101
-
-
-def order_video_image_dimensions(x):
-    return x.permute(0, 3, 1, 2)
-
-
-def image_int_to_float(x):
-    return x / 255.0
-
-
-def rescale_tensor(x):
-    return F.interpolate(x, (PREDICTION_MODEL_H, PREDICTION_MODEL_H))
 
 
 # Dataset:

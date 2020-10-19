@@ -99,7 +99,7 @@ ucf101_video_augmentation = torchvision.transforms.Compose(
         torchvision.transforms.RandomVerticalFlip(0.1),
         torchvision.transforms.ToPILImage(),
         torchvision.transforms.ColorJitter(
-            brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
+            brightness=0.2, contrast=0.2, saturation=0.2
         ),
         torchvision.transforms.RandomChoice(
             [
@@ -111,6 +111,9 @@ ucf101_video_augmentation = torchvision.transforms.Compose(
             ]
         ),
         torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        ),
     ]
 )
 
@@ -120,10 +123,13 @@ bb_video_augmentation = torchvision.transforms.Compose(
         torchvision.transforms.RandomVerticalFlip(0.1),
         torchvision.transforms.ToPILImage(),
         torchvision.transforms.ColorJitter(
-            brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
+            brightness=0.2, contrast=0.2, saturation=0.2
         ),
         torchvision.transforms.Resize((PREDICTION_MODEL_H, PREDICTION_MODEL_H)),
         torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        ),
     ]
 )
 
