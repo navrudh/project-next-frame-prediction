@@ -1,20 +1,36 @@
-from pathlib import Path
-
 import imageio
+import numpy as np
 import torch.nn.functional as F
 import torchvision.transforms.functional as TV_F
+from PIL import Image, ImageOps
 
 from config.user_config import PREDICTION_MODEL_H
 
+PREDICTION_COLOR = (34, 139, 34)  # GREEN
+SOURCE_COLOR = (200, 0, 4)  # RED
 
-def generate_gif(image_dir, file_glob, gif_name):
-    image_path = Path(image_dir)
-    images = sorted(list(image_path.glob(file_glob)))
+
+def get_concat_h(im1, im2):
+    dst = Image.new("RGB", (im1.width + im2.width, im1.height))
+    dst.paste(im1, (0, 0))
+    dst.paste(im2, (im1.width, 0))
+    return dst
+
+
+def generate_gif(pil_inps, pil_preds, gif_name, pred_start_idx=3, border_px=4):
     image_list = []
-    for file_name in images:
-        image_list.append(imageio.imread(file_name))
+    for idx, (inp, pred) in enumerate(zip(pil_inps, pil_preds)):
+        inp_image_w_border = ImageOps.expand(inp, border=border_px, fill=SOURCE_COLOR)
+        pred_image_w_border = ImageOps.expand(
+            pred,
+            border=border_px,
+            fill=PREDICTION_COLOR if idx >= pred_start_idx else SOURCE_COLOR,
+        )
+        image_list.append(
+            np.array(get_concat_h(inp_image_w_border, pred_image_w_border))
+        )
 
-    imageio.mimwrite(gif_name, image_list, format="GIF", duration=1)
+    imageio.mimwrite(gif_name, image_list, format="GIF", duration=0.75)
 
 
 def unnormalize_video_images(x):

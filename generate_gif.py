@@ -1,7 +1,7 @@
 import os
 
 import torch
-import torchvision
+import torchvision.transforms.functional as TV_F
 from pytorch_lightning import Trainer
 
 from config.user_config import (
@@ -50,18 +50,15 @@ def get_inherited_gif_generator_class(BaseLitModel):
             unbinded_inps = torch.unbind(inp)
             for i in range(dim):
                 file_name = f"pred-{batch_nb:03}-{i}"
-                for seq_no, image_tensor in enumerate(
-                    zip(unbinded_inps[i], unbinded_preds[i])
-                ):
-                    torchvision.utils.save_image(
-                        list(image_tensor),
-                        fp=f"{OUTPUT_DIR}/{file_name}-{seq_no}.jpg",
-                        normalize=True,
-                    )
+
+                pil_inps = [TV_F.to_pil_image(_t.cpu()) for _t in unbinded_inps[i]]
+                pil_preds = [TV_F.to_pil_image(_t.cpu()) for _t in unbinded_preds[i]]
+
                 generate_gif(
-                    OUTPUT_DIR,
-                    file_glob=f"{file_name}*.jpg",
+                    pil_inps,
+                    pil_preds,
                     gif_name=f"{OUTPUT_DIR}/{file_name}.gif",
+                    pred_start_idx=3,
                 )
 
     return GifGenerator
@@ -91,7 +88,7 @@ if __name__ == "__main__":
 
     lit_model.eval()
     datamodule.setup()
-    trainer = Trainer(logger=False, gpus=1, limit_test_batches=0.025)
+    trainer = Trainer(logger=False, gpus=1, limit_test_batches=0.06)
 
     for split_name, loader in (
         ("train", datamodule.train_dataloader()),
