@@ -8,18 +8,14 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import DatasetFolder
 
-from config.user_config import CLASSIFICATION_DATASET_PATH
-from utils.info import print_device, seed
-
-print_device()
-seed(42)
+from config.user_config import CLASSIFICATION_DATASET_PATH, WORK_DIR, DATALOADER_WORKERS
 
 
 class VideoClassificationModel(LightningModule):
     def __init__(self, batch_size=32, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
-        self.model = nn.Sequential(nn.Linear(768, 1024), nn.Linear(1024, 101))
+        self.model = nn.Sequential(nn.Linear(768, 2048), nn.Linear(2048, 101))
         self.loss = nn.NLLLoss()
 
     def forward(self, x):
@@ -40,7 +36,12 @@ class VideoClassificationModel(LightningModule):
             loader=torch.load,
             extensions=tuple(".pt"),
         )
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True,)
+        dataloader = DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=DATALOADER_WORKERS,
+        )
         return dataloader
 
     def val_dataloader(self):
@@ -49,31 +50,27 @@ class VideoClassificationModel(LightningModule):
             loader=torch.load,
             extensions=tuple(".pt"),
         )
-        dataloader = DataLoader(dataset, batch_size=self.batch_size,)
+        dataloader = DataLoader(
+            dataset, batch_size=self.batch_size, num_workers=DATALOADER_WORKERS
+        )
         return dataloader
 
-    def training_step(self, batch, batch_idx):
+    def forward_compute(self, batch, batch_idx):
         x, y = batch
-        y_hat = self(x)
-
+        y_hat = self.forward(x)
         loss = self.loss(y_hat, y)
-
         labels_hat = torch.argmax(y_hat, dim=1)
         acc = torch.sum(y == labels_hat).detach() / (len(y) * 1.0)
+        return loss, acc
 
+    def training_step(self, batch, batch_idx):
+        loss, acc = self.forward_compute(batch, batch_idx)
         tensorboard_logs = {"train_loss": loss, "train_acc": acc}
         tqdm_dict = {"acc": acc}
         return {"loss": loss, "progress_bar": tqdm_dict, "log": tensorboard_logs}
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-
-        loss = self.loss(y_hat, y)
-
-        labels_hat = torch.argmax(y_hat, dim=1)
-        acc = torch.sum(y == labels_hat).detach() / (len(y) * 1.0)
-
+        loss, acc = self.forward_compute(batch, batch_idx)
         return {"val_loss": loss, "val_acc": acc}
 
     def validation_epoch_end(self, outputs):
@@ -110,7 +107,12 @@ def train_model(
     return lit_model, trainer
 
 
-lit_model = VideoClassificationModel(batch_size=256)
-lit_model, trainer = train_model(lit_model, "ft-classification")
+if __name__ == "__main__":
+    torch.multiprocessing.set_start_method("spawn")
 
-print("Finished Classification")
+    lit_model = VideoClassificationModel(batch_size=256)
+    lit_model, trainer = train_model(
+        lit_model, tensorboard_graph_name=WORK_DIR.split("/")[-1] + "classification"
+    )
+
+    print("Finished Classification")
