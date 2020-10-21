@@ -11,6 +11,7 @@
 - **/__pycache__
 - **/.ipynb_checkpoints
 - **/lightning_logs
+- **/*logs*
 - **/.git
 - **/ais.uni-bonn.de
 - **/local*/**
