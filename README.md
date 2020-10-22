@@ -13,6 +13,7 @@
 ## Configuration:
 
   - ```resources/config/user-{linux_or_windows_user}.json``` - create a similar configuration file specifying the UCF101 dataset location, number of workers for processing, classification dataset directory, etc
+  - ```resources/remote-sync-templace.json``` - to sync with a remote machine to run experiments, accompanying scripts can be found in `utils/`
 
 ## Instructions to run script:
 
@@ -23,4 +24,11 @@
 3. You can execute each script by calling `python script_file.py`
 
 ## Sample Output
-![YOYO](resources/yoyo-gif-output.gif)
+Close to original<br>
+![GOOD1](resources/gifs/pred-000-7.gif)
+![GOOD2](resources/gifs/pred-001-3.gif)
+![GOOD3](resources/gifs/pred-002-0.gif)
+![GOOD4](resources/gifs/pred-002-12.gif)
+
+Suboptimal<br>
+![BAD1](resources/gifs/bad/pred-002-4.gif)
