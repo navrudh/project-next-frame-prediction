@@ -5,7 +5,8 @@
   "ucf101": {
     "path": "/data/share/user/dganesh/datasets",
     "custom-anno-split": "",
-    "workers": 7
+    "workers": 7,
+    "step_between_clips": 75
   },
   "bouncing-balls": {
     "n-balls": 3,

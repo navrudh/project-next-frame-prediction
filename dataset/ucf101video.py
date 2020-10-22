@@ -8,6 +8,7 @@ from config.user_config import (
     UCF101_ANNO_PATH,
     UCF101_WORKERS,
     DATALOADER_WORKERS,
+    UCF101_SBC,
 )
 from utils.image import image_int_to_float, order_video_image_dimensions, rescale_tensor
 from utils.train import collate_ucf101
@@ -50,7 +51,7 @@ class UCF101VideoDataModule(LightningDataModule):
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
                 frames_per_clip=6,
-                step_between_clips=75,
+                step_between_clips=UCF101_SBC,
                 num_workers=UCF101_WORKERS,
                 train=True,
                 transform=self.test_transforms,
@@ -62,7 +63,7 @@ class UCF101VideoDataModule(LightningDataModule):
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
                 frames_per_clip=6,
-                step_between_clips=75,
+                step_between_clips=UCF101_SBC,
                 num_workers=UCF101_WORKERS,
                 train=False,
                 transform=self.test_transforms,

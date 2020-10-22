@@ -24,8 +24,8 @@ UCF101_ANNO_PATH = (
     + "/UCF101TrainTestSplits-RecognitionTask/ucfTrainTestlist"
     + UCF101_ANNO_SUFFIX
 )
-
 UCF101_WORKERS = config["ucf101"]["workers"]
+UCF101_SBC = config["ucf101"]["step_between_clips"]
 
 # Bouncing Balls
 BB_NBALLS = config["bouncing-balls"]["n-balls"]

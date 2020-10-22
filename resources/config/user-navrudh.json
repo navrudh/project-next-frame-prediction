@@ -5,7 +5,8 @@
   "ucf101": {
     "path": "/media/navrudh/Data/ML/dataset",
     "custom-anno-split": "",
-    "workers": 7
+    "workers": 7,
+    "frames_per_clip": 75
   },
   "bouncing-balls": {
     "n-balls": 3,

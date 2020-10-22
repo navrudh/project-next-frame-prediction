@@ -26,6 +26,7 @@ from config.user_config import (
     PREDICTION_SCHED_FACTOR,
     PREDICTION_MODEL_H,
     PREDICTION_RESNET_UNFREEZE_EPOCH,
+    UCF101_SBC,
 )
 from config.user_config import (
     UCF101_ANNO_PATH,
@@ -215,7 +216,7 @@ class UCF101VideoPredictionLitModel(LightningModule):
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
                 frames_per_clip=12,
-                step_between_clips=75,
+                step_between_clips=UCF101_SBC,
                 num_workers=UCF101_WORKERS,
                 train=True,
                 transform=self.train_transforms,
@@ -227,7 +228,7 @@ class UCF101VideoPredictionLitModel(LightningModule):
                 UCF101_ROOT_PATH,
                 UCF101_ANNO_PATH,
                 frames_per_clip=6,
-                step_between_clips=75,
+                step_between_clips=UCF101_SBC,
                 num_workers=UCF101_WORKERS,
                 train=False,
                 transform=self.test_transforms,
