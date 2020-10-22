@@ -23,6 +23,8 @@ OUTPUT_DIR = PREDICTION_OUTPUT_DIR
 def get_inherited_gif_generator_class(BaseLitModel):
     class GifGenerator(BaseLitModel):
         def test_step(self, batch, batch_nb):
+            self.model.train()
+
             inp, pred, loss, hidden = self.predict_frame(batch, batch_nb)
 
             # pred = double_resolution(pred)
