@@ -24,6 +24,7 @@
 3. You can execute each script by calling `python script_file.py`
 
 ## Sample Output
+### TinyUCF
 Close to original<br>
 ![GOOD1](resources/gifs/pred-000-7.gif)
 ![GOOD2](resources/gifs/pred-001-3.gif)
@@ -32,3 +33,8 @@ Close to original<br>
 
 Suboptimal<br>
 ![BAD1](resources/gifs/bad/pred-002-4.gif)
+
+### Bouncing Balls
+![BB](resources/gifs/bb/pred-001-2.gif)
+![BB](resources/gifs/bb/pred-001-3.gif)
+![BB](resources/gifs/bb/pred-002-2.gif)
